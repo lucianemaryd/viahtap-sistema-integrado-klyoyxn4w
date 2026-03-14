@@ -12,31 +12,39 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, Search, FileText } from 'lucide-react'
+import { Plus, Search, FileText, CheckCircle } from 'lucide-react'
 import useAppStore from '@/stores/useAppStore'
 import { formatCurrency, formatDate } from '@/lib/formatters'
+import { useToast } from '@/hooks/use-toast'
 
 export default function QuotesList() {
-  const { quotes } = useAppStore()
+  const { quotes, clients, updateQuoteStatus } = useAppStore()
+  const { toast } = useToast()
   const [search, setSearch] = useState('')
+
+  const getClientName = (id: string) => clients.find((c) => c.id === id)?.name || 'Desconhecido'
 
   const filteredQuotes = quotes.filter(
     (q) =>
-      q.clientName.toLowerCase().includes(search.toLowerCase()) ||
+      getClientName(q.clientId).toLowerCase().includes(search.toLowerCase()) ||
       q.number.toString().includes(search),
   )
+
+  const handleApprove = (id: string) => {
+    updateQuoteStatus(id, 'Aprovado')
+    toast({ title: 'Orçamento Aprovado!', description: 'Enviado para Vendas e Financeiro.' })
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Orçamentos</h1>
-          <p className="text-muted-foreground">Gerencie propostas comerciais e gere PDFs.</p>
+          <p className="text-muted-foreground">Gerencie propostas e gere PDFs.</p>
         </div>
         <Button asChild>
           <Link to="/quotes/new">
-            <Plus className="mr-2 h-4 w-4" />
-            Novo Orçamento
+            <Plus className="mr-2 h-4 w-4" /> Novo Orçamento
           </Link>
         </Button>
       </div>
@@ -47,7 +55,7 @@ export default function QuotesList() {
             <div className="relative w-full max-w-sm">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por cliente ou número..."
+                placeholder="Buscar por cliente ou nº..."
                 className="pl-8"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -57,7 +65,7 @@ export default function QuotesList() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Número</TableHead>
+                <TableHead>Nº</TableHead>
                 <TableHead>Data</TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead>Total</TableHead>
@@ -77,8 +85,10 @@ export default function QuotesList() {
                   <TableRow key={quote.id}>
                     <TableCell className="font-medium">#{quote.number}</TableCell>
                     <TableCell>{formatDate(quote.date)}</TableCell>
-                    <TableCell>{quote.clientName}</TableCell>
-                    <TableCell>{formatCurrency(quote.total)}</TableCell>
+                    <TableCell>{getClientName(quote.clientId)}</TableCell>
+                    <TableCell className="font-medium text-primary">
+                      {formatCurrency(quote.total)}
+                    </TableCell>
                     <TableCell>
                       <Badge
                         variant={
@@ -92,9 +102,19 @@ export default function QuotesList() {
                         {quote.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" asChild>
-                        <Link to={`/quotes/${quote.id}`}>
+                    <TableCell className="text-right space-x-2">
+                      {quote.status !== 'Aprovado' && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleApprove(quote.id)}
+                          title="Aprovar Venda"
+                        >
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                        </Button>
+                      )}
+                      <Button variant="secondary" size="sm" asChild title="Ver PDF">
+                        <Link to={`/quotes/new`} state={{ quoteId: quote.id }}>
                           <FileText className="h-4 w-4" />
                         </Link>
                       </Button>

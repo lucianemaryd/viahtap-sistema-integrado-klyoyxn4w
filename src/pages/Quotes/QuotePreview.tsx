@@ -1,26 +1,34 @@
 import { Quote } from '@/stores/useAppStore'
 import { formatCurrency, formatDate } from '@/lib/formatters'
-import modeloImg from '../../assets/modelo-orcamento-249c9.png'
+import useAppStore from '@/stores/useAppStore'
 
 export default function QuotePreview({ quote }: { quote: Quote }) {
+  const { clients, settings } = useAppStore()
+
+  const client = clients.find((c) => c.id === quote.clientId) || {
+    name: 'NOME DO CLIENTE',
+    doc: 'CPF/CNPJ',
+    address: 'ENDEREÇO',
+    phone: '',
+  }
+
   const totalItems = quote.items.reduce((acc, item) => acc + item.salePrice, 0)
   const totalQtd = quote.items.reduce((acc, item) => acc + item.quantity, 0)
 
   return (
     <div className="max-w-[800px] mx-auto bg-white p-8 border shadow-sm text-sm text-black relative">
       <div className="flex justify-between items-start mb-8 border-b pb-4">
-        <div>
-          {/* Emulating the logo and brand from the image */}
-          <div className="text-red-500 font-serif italic text-3xl font-bold">ViahTap</div>
-          <div className="text-xs text-muted-foreground">PERSONALIZADOS</div>
+        <div className="flex items-center gap-4">
+          <img src={settings.logoUrl} alt="Logo" className="h-16 object-contain" />
+          <div>
+            <div className="text-primary font-bold text-2xl">{settings.name}</div>
+          </div>
         </div>
         <div className="text-right text-xs space-y-1">
-          <p className="font-bold">VIAHTAP TAPETES PERSONALIZADOS LTDA</p>
-          <p>Rua Rubens Trefiglio, 54</p>
-          <p>13088-037 - Campinas, SP</p>
-          <p>Telefone: (19) 98428-3777</p>
-          <p>CNPJ: 39.529.932/0001-61</p>
-          <p className="mt-2">Site: viahtap.com.br</p>
+          <p className="font-bold">{settings.name.toUpperCase()}</p>
+          <p>{settings.address}</p>
+          <p>Telefone: {settings.phone}</p>
+          <p>CNPJ: {settings.cnpj}</p>
         </div>
       </div>
 
@@ -28,15 +36,15 @@ export default function QuotePreview({ quote }: { quote: Quote }) {
 
       <div className="flex gap-4 mb-6">
         <div className="flex-1 border border-black p-2">
-          <p className="font-bold mb-1">Para</p>
-          <p>{quote.clientName}</p>
-          <p>CPF/CNPJ: {quote.clientDoc}</p>
-          <p>{quote.clientAddress}</p>
+          <p className="font-bold mb-1">Para: {client.name}</p>
+          <p>CPF/CNPJ: {client.doc}</p>
+          <p>{client.address}</p>
+          {client.phone && <p>Tel: {client.phone}</p>}
         </div>
         <div className="w-64 border border-black">
           <div className="flex border-b border-black h-1/2">
             <div className="w-1/2 border-r border-black p-2 flex items-center font-bold">
-              Número da Proposta
+              Nº Proposta
             </div>
             <div className="w-1/2 p-2 flex items-center">{quote.number}</div>
           </div>
@@ -47,7 +55,9 @@ export default function QuotePreview({ quote }: { quote: Quote }) {
         </div>
       </div>
 
-      <p className="mb-4">Vendedor(a): SISTEMA VIAHTAP</p>
+      <p className="mb-4">
+        Vendedor(a): <span className="font-bold uppercase">{quote.seller}</span>
+      </p>
 
       <div className="mb-6">
         <p className="font-bold mb-2 border-b-2 border-black inline-block">
@@ -56,13 +66,10 @@ export default function QuotePreview({ quote }: { quote: Quote }) {
         <table className="w-full border-collapse border border-black text-xs text-center">
           <thead>
             <tr className="border-b border-black font-bold bg-gray-50">
-              <td className="p-1 w-8 border-r border-black"></td>
-              <td className="p-1 border-r border-black text-left">Descrição do produto/serviço</td>
-              <td className="p-1 border-r border-black">Código</td>
+              <td className="p-1 w-8 border-r border-black">Item</td>
+              <td className="p-1 border-r border-black text-left">Descrição</td>
               <td className="p-1 border-r border-black">Un</td>
               <td className="p-1 border-r border-black">Qtd.</td>
-              <td className="p-1 border-r border-black">Preço lista.</td>
-              <td className="p-1 border-r border-black">Desconto %</td>
               <td className="p-1 border-r border-black">Preço un.</td>
               <td className="p-1">Preço total</td>
             </tr>
@@ -74,17 +81,12 @@ export default function QuotePreview({ quote }: { quote: Quote }) {
                 <td className="p-1 border-r border-black text-left font-medium">
                   {item.description}
                 </td>
-                <td className="p-1 border-r border-black"></td>
                 <td className="p-1 border-r border-black">UN</td>
                 <td className="p-1 border-r border-black">{item.quantity.toFixed(2)}</td>
                 <td className="p-1 border-r border-black">
                   {formatCurrency(item.salePrice / item.quantity)}
                 </td>
-                <td className="p-1 border-r border-black">0,00</td>
-                <td className="p-1 border-r border-black">
-                  {formatCurrency(item.salePrice / item.quantity)}
-                </td>
-                <td className="p-1">{formatCurrency(item.salePrice)}</td>
+                <td className="p-1 font-bold">{formatCurrency(item.salePrice)}</td>
               </tr>
             ))}
           </tbody>
@@ -93,24 +95,20 @@ export default function QuotePreview({ quote }: { quote: Quote }) {
         <table className="w-full border-collapse border border-black text-xs text-center mt-4">
           <thead>
             <tr className="border-b border-black font-bold bg-gray-50">
-              <td className="p-1 border-r border-black">Nº de itens</td>
+              <td className="p-1 border-r border-black">Total de Itens</td>
               <td className="p-1 border-r border-black">Soma das Qtdes</td>
-              <td className="p-1 border-r border-black">Total outros itens</td>
-              <td className="p-1 border-r border-black">Desconto total</td>
-              <td className="p-1 border-r border-black">Total dos itens</td>
+              <td className="p-1 border-r border-black">Total Produtos</td>
               <td className="p-1 border-r border-black">Frete</td>
-              <td className="p-1">Total da proposta</td>
+              <td className="p-1 bg-gray-200">Total da Proposta</td>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td className="p-1 border-r border-black">{quote.items.length.toFixed(2)}</td>
+              <td className="p-1 border-r border-black">{quote.items.length}</td>
               <td className="p-1 border-r border-black">{totalQtd}</td>
-              <td className="p-1 border-r border-black">0,00</td>
-              <td className="p-1 border-r border-black">0,00</td>
               <td className="p-1 border-r border-black font-bold">{formatCurrency(totalItems)}</td>
               <td className="p-1 border-r border-black">{formatCurrency(quote.freight)}</td>
-              <td className="p-1 font-bold">{formatCurrency(quote.total)}</td>
+              <td className="p-1 font-bold bg-gray-200 text-sm">{formatCurrency(quote.total)}</td>
             </tr>
           </tbody>
         </table>
@@ -130,18 +128,52 @@ export default function QuotePreview({ quote }: { quote: Quote }) {
         </div>
       </div>
 
-      <div>
-        <p className="font-bold mb-2">Observações</p>
-        <div className="border border-black p-2 text-xs h-24">
-          <p>Obs.: A produção do layout será realizada após a aprovação do orçamento.</p>
+      <div className="mb-6">
+        <p className="font-bold mb-2">Observações e Condições de Pagamento</p>
+        <div className="border border-black p-2 text-xs min-h-[80px] whitespace-pre-line">
+          {quote.observations}
           <br />
-          <p>Condições de pagamento:</p>
-          <p className="whitespace-pre-line">{quote.paymentTerms}</p>
+          <br />
+          <span className="font-bold">Pagamento: </span>
+          {quote.paymentTerms}
         </div>
       </div>
 
-      <div className="mt-8 text-xs">
-        <p>Atenciosamente, Departamento de Vendas</p>
+      {(quote.photos.length > 0 || quote.layouts.length > 0) && (
+        <div className="mb-6 page-break-inside-avoid">
+          <p className="font-bold mb-2 border-b border-black">Anexos & Referências Visuais</p>
+          <div className="grid grid-cols-2 gap-4 mt-4">
+            {quote.photos.map((p, i) => (
+              <div key={`p-${i}`} className="border p-2 bg-gray-50">
+                <p className="text-xs font-bold mb-1 text-center">Foto Local {i + 1}</p>
+                <img src={p} className="w-full h-auto object-cover rounded" />
+              </div>
+            ))}
+            {quote.layouts.map((l, i) => (
+              <div key={`l-${i}`} className="border p-2 bg-gray-50">
+                <p className="text-xs font-bold mb-1 text-center">Layout Referência {i + 1}</p>
+                <img src={l} className="w-full h-auto object-cover rounded" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="mt-12 text-sm text-center">
+        <p>Atenciosamente,</p>
+        <p className="font-bold mt-2">{quote.seller}</p>
+        <p className="text-xs">Departamento de Vendas</p>
+      </div>
+
+      <div className="mt-8 text-center no-print border-t pt-6">
+        <a
+          href={`https://wa.me/?text=${encodeURIComponent(`Olá, segue a proposta nº ${quote.number} da ViahTap. Valor total: ${formatCurrency(quote.total)}`)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors h-10 px-4 py-2 bg-green-600 text-white hover:bg-green-700"
+        >
+          Enviar via WhatsApp
+        </a>
       </div>
     </div>
   )

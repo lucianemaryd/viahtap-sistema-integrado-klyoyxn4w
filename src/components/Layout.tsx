@@ -24,7 +24,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import logoImg from '../assets/viahtap-40-x-40-px-1-d1d62.png'
+import useAppStore from '@/stores/useAppStore'
 
 const menuItems = [
   { title: 'Dashboard', icon: LayoutDashboard, path: '/' },
@@ -39,13 +39,17 @@ const menuItems = [
 
 export default function Layout() {
   const location = useLocation()
+  const { settings } = useAppStore()
 
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-muted/30">
         <Sidebar className="no-print border-r">
           <SidebarHeader className="h-16 flex items-center justify-center border-b px-4">
-            <img src={logoImg} alt="ViahTap" className="h-8 object-contain" />
+            <img src={settings.logoUrl} alt="ViahTap" className="h-8 object-contain" />
+            <span className="ml-2 font-bold text-primary truncate hidden md:block">
+              {settings.name.split(' ')[0]}
+            </span>
           </SidebarHeader>
           <SidebarContent className="py-4">
             <SidebarMenu>
@@ -89,8 +93,8 @@ export default function Layout() {
                 <span className="absolute top-1 right-1 h-2 w-2 bg-destructive rounded-full" />
               </Button>
               <Avatar className="h-8 w-8">
-                <AvatarImage src="https://img.usecurling.com/ppl/thumbnail?gender=female&seed=1" />
-                <AvatarFallback>FG</AvatarFallback>
+                <AvatarImage src="https://img.usecurling.com/ppl/thumbnail?gender=female&seed=2" />
+                <AvatarFallback>LM</AvatarFallback>
               </Avatar>
             </div>
           </header>

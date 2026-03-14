@@ -9,6 +9,7 @@ import Sales from './pages/Sales'
 import Financial from './pages/Financial'
 import CRM from './pages/CRM'
 import Invoices from './pages/Invoices'
+import Settings from './pages/Settings'
 import NotFound from './pages/NotFound'
 import { AppStoreProvider } from './stores/useAppStore'
 
@@ -26,6 +27,7 @@ export default function App() {
             <Route path="costs" element={<Costs />} />
             <Route path="financial" element={<Financial />} />
             <Route path="invoices" element={<Invoices />} />
+            <Route path="settings" element={<Settings />} />
             <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>
