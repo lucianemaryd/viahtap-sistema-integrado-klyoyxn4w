@@ -50,7 +50,8 @@ export type QuoteItem = {
   width: number
   height: number
   quantity: number
-  bordaFlex: boolean
+  bordaType?: string
+  bordaFlex?: boolean
   bordaRebaixada?: boolean
   exactMeasure: boolean
   isMisc?: boolean
@@ -90,6 +91,8 @@ type AppState = {
   addTransaction: (t: FinTransaction) => void
   costs: Record<string, Record<string, ProductPricing>>
   updateCost: (category: string, item: string, data: Partial<ProductPricing>) => void
+  renameCost: (category: string, oldName: string, newName: string) => void
+  deleteCost: (category: string, item: string) => void
   quotes: Quote[]
   saveQuote: (quote: Quote) => void
   updateQuoteStatus: (id: string, status: Quote['status']) => void
@@ -143,14 +146,6 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       status: 'Pendente',
       type: 'EXPENSE',
     },
-    {
-      id: 't2',
-      desc: 'Energia Elétrica',
-      value: 450.0,
-      date: new Date().toISOString(),
-      status: 'Pago',
-      type: 'EXPENSE',
-    },
   ])
 
   const [costs, setCosts] = useState(INITIAL_COSTS)
@@ -176,12 +171,10 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           id: 'i1',
           description: 'Tapete VINIL GOLD Liso 100x100cm',
           material: 'VINIL_GOLD',
-          customization: 'Liso',
+          customization: 'Sem Borda',
           width: 100,
           height: 100,
           quantity: 3,
-          bordaFlex: false,
-          bordaRebaixada: false,
           exactMeasure: false,
           unit: 'UN',
           costPrice: 125,
@@ -217,13 +210,26 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
     setCosts((prev) => {
       const category = prev[c] || {}
       const item = category[i] || { type: 'fixed', price: 0 }
-      return {
-        ...prev,
-        [c]: {
-          ...category,
-          [i]: { ...item, ...data },
-        },
+      return { ...prev, [c]: { ...category, [i]: { ...item, ...data } } }
+    })
+  }
+
+  const renameCost = (c: string, oldName: string, newName: string) => {
+    setCosts((prev) => {
+      const category = { ...prev[c] }
+      if (category[oldName]) {
+        category[newName] = category[oldName]
+        delete category[oldName]
       }
+      return { ...prev, [c]: category }
+    })
+  }
+
+  const deleteCost = (c: string, i: string) => {
+    setCosts((prev) => {
+      const category = { ...prev[c] }
+      delete category[i]
+      return { ...prev, [c]: category }
     })
   }
 
@@ -252,6 +258,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         addTransaction,
         costs,
         updateCost,
+        renameCost,
+        deleteCost,
         quotes,
         saveQuote,
         updateQuoteStatus,
