@@ -1,29 +1,36 @@
-/* Main App Component - Handles routing (using react-router-dom), query client and other providers - use this file to add all routes */
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Toaster } from '@/components/ui/toaster'
-import { Toaster as Sonner } from '@/components/ui/sonner'
-import { TooltipProvider } from '@/components/ui/tooltip'
-import Index from './pages/Index'
-import NotFound from './pages/NotFound'
 import Layout from './components/Layout'
+import Dashboard from './pages/Dashboard'
+import Costs from './pages/Costs'
+import QuotesList from './pages/Quotes/index'
+import QuoteBuilder from './pages/Quotes/Builder'
+import Sales from './pages/Sales'
+import Financial from './pages/Financial'
+import CRM from './pages/CRM'
+import Invoices from './pages/Invoices'
+import NotFound from './pages/NotFound'
+import { AppStoreProvider } from './stores/useAppStore'
 
-// ONLY IMPORT AND RENDER WORKING PAGES, NEVER ADD PLACEHOLDER COMPONENTS OR PAGES IN THIS FILE
-// AVOID REMOVING ANY CONTEXT PROVIDERS FROM THIS FILE (e.g. TooltipProvider, Toaster, Sonner)
-
-const App = () => (
-  <BrowserRouter future={{ v7_startTransition: false, v7_relativeSplatPath: false }}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <Routes>
-        <Route element={<Layout />}>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES MUST BE ADDED HERE */}
-        </Route>
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </TooltipProvider>
-  </BrowserRouter>
-)
-
-export default App
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppStoreProvider>
+        <Routes>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Dashboard />} />
+            <Route path="crm" element={<CRM />} />
+            <Route path="quotes" element={<QuotesList />} />
+            <Route path="quotes/new" element={<QuoteBuilder />} />
+            <Route path="sales" element={<Sales />} />
+            <Route path="costs" element={<Costs />} />
+            <Route path="financial" element={<Financial />} />
+            <Route path="invoices" element={<Invoices />} />
+            <Route path="*" element={<NotFound />} />
+          </Route>
+        </Routes>
+        <Toaster />
+      </AppStoreProvider>
+    </BrowserRouter>
+  )
+}
