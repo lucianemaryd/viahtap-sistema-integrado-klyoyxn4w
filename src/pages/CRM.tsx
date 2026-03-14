@@ -1,15 +1,5 @@
 import { useState } from 'react'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
+import { useAppStore, Customer } from '@/stores/useAppStore'
 import {
   Table,
   TableBody,
@@ -18,197 +8,166 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Users, Plus, Phone, Search, Edit2 } from 'lucide-react'
-import useAppStore, { Client } from '@/stores/useAppStore'
-import { useToast } from '@/hooks/use-toast'
-
-const emptyForm: Client = {
-  id: '',
-  name: '',
-  doc: '',
-  ie: '',
-  im: '',
-  contactName: '',
-  phone: '',
-  email: '',
-  address: '',
-  cep: '',
-  bairro: '',
-}
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
+import { Edit, Trash2, Plus } from 'lucide-react'
 
 export default function CRM() {
-  const { clients, saveClient } = useAppStore()
-  const { toast } = useToast()
-  const [search, setSearch] = useState('')
-  const [open, setOpen] = useState(false)
-  const [form, setForm] = useState<Client>(emptyForm)
+  const { customers, addCustomer, updateCustomer, deleteCustomer } = useAppStore()
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
 
-  const filtered = clients.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
+  const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    const customerData = {
+      name: formData.get('name') as string,
+      document: formData.get('document') as string,
+      email: formData.get('email') as string,
+      municipalRegistration: formData.get('municipalRegistration') as string,
+      cep: formData.get('cep') as string,
+      neighborhood: formData.get('neighborhood') as string,
+      phone: formData.get('phone') as string,
+      address: formData.get('address') as string,
+      status: 'active' as const,
+    }
 
-  const handleOpenNew = () => {
-    setForm({ ...emptyForm, id: Math.random().toString() })
-    setOpen(true)
-  }
-
-  const handleOpenEdit = (client: Client) => {
-    setForm(client)
-    setOpen(true)
-  }
-
-  const handleSave = () => {
-    if (!form.name || !form.doc)
-      return toast({ variant: 'destructive', title: 'Preencha os campos obrigatórios (Nome, Doc)' })
-    saveClient(form)
-    setOpen(false)
-    toast({ title: 'Cliente salvo com sucesso!' })
+    if (editingCustomer) {
+      updateCustomer(editingCustomer.id, customerData)
+    } else {
+      addCustomer(customerData)
+    }
+    setIsDialogOpen(false)
   }
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">CRM & Leads</h1>
-          <p className="text-muted-foreground">Gerencie seus clientes e detalhes de cadastro.</p>
-        </div>
-        <Button onClick={handleOpenNew}>
-          <Plus className="w-4 h-4 mr-2" /> Novo Cliente
+        <h1 className="text-3xl font-bold tracking-tight">Clientes (CRM)</h1>
+        <Button
+          onClick={() => {
+            setEditingCustomer(null)
+            setIsDialogOpen(true)
+          }}
+        >
+          <Plus className="mr-2 h-4 w-4" /> Adicionar Cliente
         </Button>
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-3xl">
+      <div className="rounded-md border bg-card">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nome</TableHead>
+              <TableHead>Documento</TableHead>
+              <TableHead>E-mail</TableHead>
+              <TableHead>Telefone</TableHead>
+              <TableHead>Bairro</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {customers.map((customer) => (
+              <TableRow key={customer.id}>
+                <TableCell className="font-medium">{customer.name}</TableCell>
+                <TableCell>{customer.document}</TableCell>
+                <TableCell>{customer.email}</TableCell>
+                <TableCell>{customer.phone}</TableCell>
+                <TableCell>{customer.neighborhood}</TableCell>
+                <TableCell className="text-right space-x-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setEditingCustomer(customer)
+                      setIsDialogOpen(true)
+                    }}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => deleteCustomer(customer.id)}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{form.name ? 'Editar Cliente' : 'Cadastrar Cliente'}</DialogTitle>
+            <DialogTitle>{editingCustomer ? 'Editar Cliente' : 'Novo Cliente'}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 pt-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2 col-span-2">
-                <Label>Nome / Razão Social *</Label>
-                <Input
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>CPF / CNPJ *</Label>
-                <Input
-                  value={form.doc}
-                  onChange={(e) => setForm({ ...form, doc: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>E-mail</Label>
-                <Input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Inscrição Estadual (IE)</Label>
-                <Input value={form.ie} onChange={(e) => setForm({ ...form, ie: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Inscrição Municipal (IM)</Label>
-                <Input value={form.im} onChange={(e) => setForm({ ...form, im: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Nome do Contato</Label>
-                <Input
-                  value={form.contactName}
-                  onChange={(e) => setForm({ ...form, contactName: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Telefone / WhatsApp</Label>
-                <Input
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>CEP</Label>
-                <Input
-                  value={form.cep}
-                  onChange={(e) => setForm({ ...form, cep: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Bairro</Label>
-                <Input
-                  value={form.bairro}
-                  onChange={(e) => setForm({ ...form, bairro: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2 col-span-2">
-                <Label>Endereço Completo (Rua, Nº, Complemento, Cidade-UF)</Label>
-                <Input
-                  value={form.address}
-                  onChange={(e) => setForm({ ...form, address: e.target.value })}
-                />
-              </div>
+          <form onSubmit={handleSave} className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nome/Razão Social</Label>
+              <Input id="name" name="name" defaultValue={editingCustomer?.name} required />
             </div>
-            <Button onClick={handleSave} className="w-full mt-4">
-              Salvar Cliente
-            </Button>
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="document">CPF/CNPJ</Label>
+              <Input
+                id="document"
+                name="document"
+                defaultValue={editingCustomer?.document}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email">E-mail</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                defaultValue={editingCustomer?.email}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Telefone</Label>
+              <Input id="phone" name="phone" defaultValue={editingCustomer?.phone} required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="municipalRegistration">Inscrição Municipal</Label>
+              <Input
+                id="municipalRegistration"
+                name="municipalRegistration"
+                defaultValue={editingCustomer?.municipalRegistration}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cep">CEP</Label>
+              <Input id="cep" name="cep" defaultValue={editingCustomer?.cep} required />
+            </div>
+            <div className="space-y-2 col-span-2">
+              <Label htmlFor="address">Endereço Completo</Label>
+              <Input id="address" name="address" defaultValue={editingCustomer?.address} required />
+            </div>
+            <div className="space-y-2 col-span-2">
+              <Label htmlFor="neighborhood">Bairro</Label>
+              <Input
+                id="neighborhood"
+                name="neighborhood"
+                defaultValue={editingCustomer?.neighborhood}
+                required
+              />
+            </div>
+            <div className="col-span-2 flex justify-end mt-4">
+              <Button type="submit">Salvar</Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
-
-      <Card>
-        <CardHeader className="py-4">
-          <div className="relative w-full max-w-sm">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar cliente..."
-              className="pl-8"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Documento</TableHead>
-                <TableHead>Contato</TableHead>
-                <TableHead>Telefone</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((client) => (
-                <TableRow key={client.id}>
-                  <TableCell className="font-medium flex items-center gap-2">
-                    <Users className="w-4 h-4 text-muted-foreground" /> {client.name}
-                  </TableCell>
-                  <TableCell>{client.doc}</TableCell>
-                  <TableCell>{client.contactName}</TableCell>
-                  <TableCell>
-                    <span className="flex items-center gap-2">
-                      <Phone className="w-3 h-3" /> {client.phone}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="sm" onClick={() => handleOpenEdit(client)}>
-                      <Edit2 className="w-4 h-4 text-muted-foreground" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {filtered.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-4">
-                    Nenhum cliente encontrado.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Card, CardHeader, CardTitle } from '@/components/ui/card'
+import { useAppStore, Product } from '@/stores/useAppStore'
 import {
   Table,
   TableBody,
@@ -8,11 +8,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import useAppStore from '@/stores/useAppStore'
-import { Badge } from '@/components/ui/badge'
-import { Edit2, Check, Trash2, X } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { formatCurrency } from '@/lib/formatters'
 import {
   Dialog,
   DialogContent,
@@ -20,220 +18,158 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
-
-function CostRow({ category, itemName, itemData, updateCost, renameCost, deleteCost }: any) {
-  const [isEditing, setIsEditing] = useState(false)
-  const [editData, setEditData] = useState({
-    name: itemName,
-    price: itemData.price,
-    ncm: itemData.ncm || '',
-    ipi: itemData.ipi || 0,
-  })
-  const [deleteOpen, setDeleteOpen] = useState(false)
-
-  const handleSave = () => {
-    if (editData.name && editData.name !== itemName) renameCost(category, itemName, editData.name)
-    const finalName = editData.name || itemName
-    updateCost(category, finalName, {
-      price: Number(editData.price),
-      ncm: editData.ncm,
-      ipi: Number(editData.ipi),
-    })
-    setIsEditing(false)
-  }
-
-  const handleCancel = () => {
-    setEditData({
-      name: itemName,
-      price: itemData.price,
-      ncm: itemData.ncm || '',
-      ipi: itemData.ipi || 0,
-    })
-    setIsEditing(false)
-  }
-
-  return (
-    <TableRow>
-      <TableCell className="font-medium text-sm">
-        {isEditing ? (
-          <Input
-            value={editData.name}
-            onChange={(e) => setEditData({ ...editData, name: e.target.value })}
-            className="h-8 min-w-[140px]"
-            placeholder="Nome"
-          />
-        ) : (
-          <span className="truncate">{itemName}</span>
-        )}
-      </TableCell>
-      <TableCell>
-        <Badge variant="secondary" className="text-[10px]">
-          {itemData.type.toUpperCase()}
-        </Badge>
-      </TableCell>
-      <TableCell>
-        {isEditing ? (
-          <Input
-            value={editData.ncm}
-            onChange={(e) => setEditData({ ...editData, ncm: e.target.value })}
-            className="h-8 w-20"
-            placeholder="NCM"
-          />
-        ) : (
-          <span className="text-xs text-muted-foreground">{itemData.ncm || '-'}</span>
-        )}
-      </TableCell>
-      <TableCell className="text-right">
-        {isEditing ? (
-          <Input
-            type="number"
-            value={editData.ipi}
-            onChange={(e) => setEditData({ ...editData, ipi: +e.target.value })}
-            className="h-8 w-16 ml-auto text-right"
-            placeholder="IPI%"
-          />
-        ) : (
-          <span className="text-xs text-muted-foreground">
-            {itemData.ipi ? `${itemData.ipi}%` : '-'}
-          </span>
-        )}
-      </TableCell>
-      <TableCell className="text-right">
-        {isEditing ? (
-          <Input
-            type="number"
-            value={editData.price}
-            onChange={(e) => setEditData({ ...editData, price: +e.target.value })}
-            className="h-8 text-right font-mono w-24 ml-auto"
-          />
-        ) : (
-          <span className="font-mono text-sm">
-            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
-              itemData.price,
-            )}
-          </span>
-        )}
-      </TableCell>
-      <TableCell className="text-right w-[90px]">
-        {isEditing ? (
-          <div className="flex justify-end gap-1">
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-8 w-8 text-green-600"
-              onClick={handleSave}
-            >
-              <Check className="h-4 w-4" />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-8 w-8 text-destructive"
-              onClick={handleCancel}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-        ) : (
-          <div className="flex justify-end gap-1">
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-8 w-8 text-muted-foreground"
-              onClick={() => setIsEditing(true)}
-            >
-              <Edit2 className="h-4 w-4" />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-8 w-8 text-destructive"
-              onClick={() => setDeleteOpen(true)}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
-        <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Excluir Produto?</DialogTitle>
-            </DialogHeader>
-            <p className="text-sm text-muted-foreground">
-              Tem certeza que deseja excluir <strong>{itemName}</strong>?
-            </p>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setDeleteOpen(false)}>
-                Cancelar
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={() => {
-                  deleteCost(category, itemName)
-                  setDeleteOpen(false)
-                }}
-              >
-                Excluir
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </TableCell>
-    </TableRow>
-  )
-}
+import { Label } from '@/components/ui/label'
+import { Edit, Trash2, Plus } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
 
 export default function Costs() {
-  const { costs, updateCost, renameCost, deleteCost } = useAppStore()
+  const { products, addProduct, updateProduct, deleteProduct } = useAppStore()
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const { toast } = useToast()
+
+  const handleSave = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    const productData = {
+      name: formData.get('name') as string,
+      category: formData.get('category') as string,
+      basePrice: parseFloat(formData.get('basePrice') as string),
+      unit: formData.get('unit') as 'm2' | 'ml' | 'unit',
+      ncm: formData.get('ncm') as string,
+      ipi: parseFloat(formData.get('ipi') as string) || 0,
+      warranty: formData.get('warranty') as string,
+    }
+
+    if (editingProduct) {
+      updateProduct(editingProduct.id, productData)
+      toast({ title: 'Produto atualizado' })
+    } else {
+      addProduct(productData)
+      toast({ title: 'Produto adicionado' })
+    }
+    setIsDialogOpen(false)
+  }
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Gestão de Custos</h1>
-        <p className="text-muted-foreground">
-          Edite nomes, NCM, IPI e valores base de todos os produtos do portfólio.
-        </p>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold tracking-tight">Tabela de Custos</h1>
+        <Button
+          onClick={() => {
+            setEditingProduct(null)
+            setIsDialogOpen(true)
+          }}
+        >
+          <Plus className="mr-2 h-4 w-4" /> Adicionar Produto
+        </Button>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        {Object.entries(costs).map(([category, items]) => (
-          <Card key={category} className="overflow-hidden">
-            <CardHeader className="pb-2 bg-muted/30">
-              <CardTitle className="text-lg flex items-center justify-between">
-                {category.replace(/_/g, ' ')}
-                <Badge variant="outline">{Object.keys(items).length} itens</Badge>
-              </CardTitle>
-            </CardHeader>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Produto / Variação</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>NCM</TableHead>
-                    <TableHead className="text-right">IPI (%)</TableHead>
-                    <TableHead className="w-[110px] text-right">Base (R$)</TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {Object.entries(items).map(([itemName, itemData]) => (
-                    <CostRow
-                      key={itemName}
-                      category={category}
-                      itemName={itemName}
-                      itemData={itemData}
-                      updateCost={updateCost}
-                      renameCost={renameCost}
-                      deleteCost={deleteCost}
-                    />
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </Card>
-        ))}
+      <div className="rounded-md border bg-card">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Produto</TableHead>
+              <TableHead>Categoria</TableHead>
+              <TableHead>NCM</TableHead>
+              <TableHead>IPI</TableHead>
+              <TableHead>Garantia</TableHead>
+              <TableHead>Unidade</TableHead>
+              <TableHead className="text-right">Preço Base</TableHead>
+              <TableHead className="text-right">Ações</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {products.map((product) => (
+              <TableRow key={product.id}>
+                <TableCell className="font-medium">{product.name}</TableCell>
+                <TableCell>{product.category}</TableCell>
+                <TableCell>{product.ncm || '-'}</TableCell>
+                <TableCell>{product.ipi !== undefined ? `${product.ipi}%` : '-'}</TableCell>
+                <TableCell>{product.warranty || '-'}</TableCell>
+                <TableCell className="uppercase">{product.unit}</TableCell>
+                <TableCell className="text-right">{formatCurrency(product.basePrice)}</TableCell>
+                <TableCell className="text-right space-x-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setEditingProduct(product)
+                      setIsDialogOpen(true)
+                    }}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => deleteProduct(product.id)}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </div>
+
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingProduct ? 'Editar Produto' : 'Novo Produto'}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSave} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Nome</Label>
+                <Input id="name" name="name" defaultValue={editingProduct?.name} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="category">Categoria</Label>
+                <Input
+                  id="category"
+                  name="category"
+                  defaultValue={editingProduct?.category}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="basePrice">Preço Base (R$)</Label>
+                <Input
+                  id="basePrice"
+                  name="basePrice"
+                  type="number"
+                  step="0.01"
+                  defaultValue={editingProduct?.basePrice}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="unit">Unidade (m2, ml, unit)</Label>
+                <Input id="unit" name="unit" defaultValue={editingProduct?.unit} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ncm">NCM</Label>
+                <Input id="ncm" name="ncm" defaultValue={editingProduct?.ncm} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ipi">IPI (%)</Label>
+                <Input
+                  id="ipi"
+                  name="ipi"
+                  type="number"
+                  step="0.1"
+                  defaultValue={editingProduct?.ipi}
+                />
+              </div>
+              <div className="space-y-2 col-span-2">
+                <Label htmlFor="warranty">Garantia</Label>
+                <Input id="warranty" name="warranty" defaultValue={editingProduct?.warranty} />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="submit">Salvar</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
