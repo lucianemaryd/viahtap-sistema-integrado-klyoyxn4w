@@ -278,3 +278,5 @@ export const useAppStore = create<AppState>((set) => ({
       quotes: state.quotes.filter((q) => q.id !== id),
     })),
 }))
+
+export default useAppStore

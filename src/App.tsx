@@ -12,29 +12,26 @@ import Suppliers from './pages/Suppliers'
 import Invoices from './pages/Invoices'
 import Settings from './pages/Settings'
 import NotFound from './pages/NotFound'
-import { AppStoreProvider } from './stores/useAppStore'
 
 export default function App() {
   return (
     <BrowserRouter>
-      <AppStoreProvider>
-        <Routes>
-          <Route path="/" element={<Layout />}>
-            <Route index element={<Dashboard />} />
-            <Route path="crm" element={<CRM />} />
-            <Route path="suppliers" element={<Suppliers />} />
-            <Route path="quotes" element={<QuotesList />} />
-            <Route path="quotes/new" element={<QuoteBuilder />} />
-            <Route path="sales" element={<Sales />} />
-            <Route path="costs" element={<Costs />} />
-            <Route path="financial" element={<Financial />} />
-            <Route path="invoices" element={<Invoices />} />
-            <Route path="settings" element={<Settings />} />
-            <Route path="*" element={<NotFound />} />
-          </Route>
-        </Routes>
-        <Toaster />
-      </AppStoreProvider>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<Dashboard />} />
+          <Route path="crm" element={<CRM />} />
+          <Route path="suppliers" element={<Suppliers />} />
+          <Route path="quotes" element={<QuotesList />} />
+          <Route path="quotes/new" element={<QuoteBuilder />} />
+          <Route path="sales" element={<Sales />} />
+          <Route path="costs" element={<Costs />} />
+          <Route path="financial" element={<Financial />} />
+          <Route path="invoices" element={<Invoices />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="*" element={<NotFound />} />
+        </Route>
+      </Routes>
+      <Toaster />
     </BrowserRouter>
   )
 }
