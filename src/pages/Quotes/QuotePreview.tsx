@@ -10,6 +10,7 @@ export default function QuotePreview({ quote }: { quote: Quote }) {
     doc: 'CPF/CNPJ',
     address: 'ENDEREÇO',
     phone: '',
+    contactName: '',
   }
 
   const totalItems = quote.items.reduce((acc, item) => acc + item.salePrice, 0)
@@ -39,7 +40,12 @@ export default function QuotePreview({ quote }: { quote: Quote }) {
           <p className="font-bold mb-1">Para: {client.name}</p>
           <p>CPF/CNPJ: {client.doc}</p>
           <p>{client.address}</p>
-          {client.phone && <p>Tel: {client.phone}</p>}
+          {(client.phone || client.contactName) && (
+            <p className="mt-1">
+              {client.contactName ? `A/C: ${client.contactName}` : ''}{' '}
+              {client.phone ? `| Tel: ${client.phone}` : ''}
+            </p>
+          )}
         </div>
         <div className="w-64 border border-black">
           <div className="flex border-b border-black h-1/2">
@@ -80,8 +86,9 @@ export default function QuotePreview({ quote }: { quote: Quote }) {
                 <td className="p-1 border-r border-black">{idx + 1}</td>
                 <td className="p-1 border-r border-black text-left font-medium">
                   {item.description}
+                  {item.isMisc && <span className="block text-[10px] italic">Serviço Avulso</span>}
                 </td>
-                <td className="p-1 border-r border-black">UN</td>
+                <td className="p-1 border-r border-black">{item.unit || 'UN'}</td>
                 <td className="p-1 border-r border-black">{item.quantity.toFixed(2)}</td>
                 <td className="p-1 border-r border-black">
                   {formatCurrency(item.salePrice / item.quantity)}
@@ -145,13 +152,13 @@ export default function QuotePreview({ quote }: { quote: Quote }) {
           <div className="grid grid-cols-2 gap-4 mt-4">
             {quote.photos.map((p, i) => (
               <div key={`p-${i}`} className="border p-2 bg-gray-50">
-                <p className="text-xs font-bold mb-1 text-center">Foto Local {i + 1}</p>
+                <p className="text-xs font-bold mb-1 text-center">Foto do Produto {i + 1}</p>
                 <img src={p} className="w-full h-auto object-cover rounded" />
               </div>
             ))}
             {quote.layouts.map((l, i) => (
               <div key={`l-${i}`} className="border p-2 bg-gray-50">
-                <p className="text-xs font-bold mb-1 text-center">Layout Referência {i + 1}</p>
+                <p className="text-xs font-bold mb-1 text-center">Layout Recebido {i + 1}</p>
                 <img src={l} className="w-full h-auto object-cover rounded" />
               </div>
             ))}

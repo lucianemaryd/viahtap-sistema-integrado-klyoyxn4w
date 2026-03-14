@@ -1,9 +1,10 @@
-export type ProductPricingType = 'fixed' | 'm2' | 'roll'
+export type ProductPricingType = 'fixed' | 'm2' | 'roll' | 'ml'
 
 export type ProductPricing = {
   type: ProductPricingType
   price: number
   priceM2?: number
+  fatorCorte?: number[]
 }
 
 export const INITIAL_COSTS: Record<string, Record<string, ProductPricing>> = {
@@ -50,5 +51,45 @@ export const INITIAL_COSTS: Record<string, Record<string, ProductPricing>> = {
     'Rolo 1m x 10m': { type: 'roll', price: 944.9, priceM2: 94.49 },
     'Personalizado UV M2': { type: 'm2', price: 216.99 },
     'Elevador M2': { type: 'm2', price: 174.99 },
+  },
+  BARBERKAP: {
+    '1.20m x 1.45m': { type: 'fixed', price: 349.0 },
+  },
+  ANTIFADIGA: {
+    '60cm x 90cm': { type: 'fixed', price: 233.9 },
+    '80cm x 1.20m': { type: 'fixed', price: 374.9 },
+    'Personalizado M2': { type: 'm2', price: 390.0, fatorCorte: [60, 80, 120] },
+  },
+  YOGAKAP: {
+    '60cm x 1.66m': { type: 'fixed', price: 44.87 },
+    '60cm x 10m': { type: 'fixed', price: 269.22 },
+  },
+  ACQUAKAP: {
+    'Kit 6 Peças 30x30cm': { type: 'fixed', price: 49.9 },
+  },
+  H_KAP: {
+    'Rolo 1.20m x 15m': { type: 'roll', price: 1228.5 },
+    'Metro Linear (ML)': { type: 'ml', price: 81.9 },
+  },
+  S_KAP: {
+    'Rolo 1.20m x 15m': { type: 'roll', price: 1243.5 },
+    'Metro Linear (ML)': { type: 'ml', price: 82.9 },
+  },
+  W_KAP: {
+    'Rolo 1.20m x 10m': { type: 'roll', price: 778.1 },
+    'Metro Linear (ML)': { type: 'ml', price: 79.0 },
+  },
+  DUO: {
+    '1.90m x 6m (M2)': { type: 'm2', price: 165.0, fatorCorte: [60, 80, 100, 120, 160, 200] },
+    '1.90m x 6m (C/ Borda Flex)': {
+      type: 'm2',
+      price: 210.0,
+      fatorCorte: [60, 80, 100, 120, 160, 200],
+    },
+    'Rolo 1.90m x 6m': { type: 'roll', price: 1881.0 },
+  },
+  DUO_OPERA: {
+    '4m x 12.5m': { type: 'fixed', price: 2995.0 },
+    '4m x 25m': { type: 'fixed', price: 5990.0 },
   },
 }

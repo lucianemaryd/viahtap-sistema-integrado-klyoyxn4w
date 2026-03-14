@@ -29,7 +29,10 @@ export type QuoteItem = {
   height: number
   quantity: number
   bordaFlex: boolean
+  bordaRebaixada?: boolean
   exactMeasure: boolean
+  isMisc?: boolean
+  unit?: string
   costPrice: number
   marginPercent: number
   salePrice: number
@@ -118,7 +121,9 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           height: 100,
           quantity: 3,
           bordaFlex: false,
+          bordaRebaixada: false,
           exactMeasure: false,
+          unit: 'UN',
           costPrice: 125,
           marginPercent: 100,
           salePrice: 5490,
