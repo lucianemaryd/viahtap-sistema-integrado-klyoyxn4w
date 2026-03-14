@@ -6,6 +6,7 @@ export type ProductPricing = {
   priceM2?: number
   fatorCorte?: number[]
   ncm?: string
+  ipi?: number
 }
 
 export const INITIAL_COSTS: Record<string, Record<string, ProductPricing>> = {
@@ -25,6 +26,7 @@ export const INITIAL_COSTS: Record<string, Record<string, ProductPricing>> = {
     'Pintado 03': { type: 'm2', price: 398, ncm: '3918.10.00' },
     'Vulcanizado 01': { type: 'm2', price: 540, ncm: '3918.10.00' },
     'Vulcanizado 02': { type: 'm2', price: 599, ncm: '3918.10.00' },
+    'Vulcanizado 03': { type: 'm2', price: 659, ncm: '3918.10.00' },
   },
   CLEANKAP: {
     Personalizado: { type: 'm2', price: 341, ncm: '3918.10.00' },
@@ -36,7 +38,7 @@ export const INITIAL_COSTS: Record<string, Record<string, ProductPricing>> = {
     'Rolo 1.90m x 6m': { type: 'roll', price: 1881.0 },
   },
   DUO_OPERA: {
-    'Personalizado M2': { type: 'm2', price: 190.0 },
+    'Personalizado M2': { type: 'm2', price: 190.0, ncm: '5703.20.00' },
   },
   FIBRA_COCO: {
     'Liso M2': { type: 'm2', price: 179.0 },
@@ -69,13 +71,13 @@ export const INITIAL_COSTS: Record<string, Record<string, ProductPricing>> = {
     'Kit 11 Peças': { type: 'fixed', price: 120.0 },
   },
   H_KAP: {
-    M2: { type: 'm2', price: 150.0 },
+    M2: { type: 'm2', price: 150.0, fatorCorte: [120] },
   },
   S_KAP: {
-    M2: { type: 'm2', price: 140.0 },
+    M2: { type: 'm2', price: 140.0, fatorCorte: [120] },
   },
   W_KAP: {
-    M2: { type: 'm2', price: 160.0 },
+    M2: { type: 'm2', price: 160.0, fatorCorte: [120] },
   },
   GRAMA_SINTETICA: {
     'Nacional 12mm (2m X 25m)': { type: 'm2', price: 24.9, ncm: '3918.90.00' },

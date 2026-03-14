@@ -17,6 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PlusCircle, Plus } from 'lucide-react'
 import { formatCurrency } from '@/lib/formatters'
 import useAppStore, { QuoteItem } from '@/stores/useAppStore'
@@ -42,6 +43,10 @@ export default function ProductForm({ onAdd }: { onAdd: (item: QuoteItem) => voi
   const [bordaType, setBordaType] = useState('Nenhuma')
   const [exactMeasure, setExactMeasure] = useState(false)
   const [margin, setMargin] = useState(100)
+  const [thickness, setThickness] = useState('5')
+  const [kapCondition, setKapCondition] = useState('Sem Borda')
+
+  const [customItem, setCustomItem] = useState({ description: '', price: 0, qty: 1 })
 
   const [newCatOpen, setNewCatOpen] = useState(false)
   const [newCatForm, setNewCatForm] = useState({
@@ -89,14 +94,16 @@ export default function ProductForm({ onAdd }: { onAdd: (item: QuoteItem) => voi
     const areaM2 = (effectiveW * effectiveH) / 10000
 
     if (selectedItemConfig.type === 'm2') calculatedCost = basePrice * areaM2
-    else if (selectedItemConfig.type === 'ml')
-      calculatedCost = basePrice * (Math.max(effectiveW, effectiveH) / 100)
+    else if (selectedItemConfig.type === 'ml') calculatedCost = basePrice * (height / 100) // linear meter logic
 
     if (material.startsWith('VINIL_')) {
       if (bordaType === 'Vulcanizada') calculatedCost += 20 * areaM2
       if (bordaType === 'Flex Aplicada') calculatedCost += 45 * areaM2
       if (bordaType === 'Rebaixada') calculatedCost += 10 * areaM2
     }
+
+    if (['S_KAP', 'H_KAP', 'W_KAP'].includes(material) && kapCondition === 'Com Borda')
+      calculatedCost *= 1.15
 
     if (exactMeasure) calculatedCost *= 1.1
 
@@ -126,6 +133,7 @@ export default function ProductForm({ onAdd }: { onAdd: (item: QuoteItem) => voi
     margin,
     material,
     customization,
+    kapCondition,
   ])
 
   const handleAddItem = () => {
@@ -134,6 +142,9 @@ export default function ProductForm({ onAdd }: { onAdd: (item: QuoteItem) => voi
     const dimStr = isDim ? ` ${width}x${height}cm` : ''
     let addOns = []
     if (bordaType !== 'Nenhuma' && material.startsWith('VINIL_')) addOns.push(`Borda ${bordaType}`)
+    if (['S_KAP', 'H_KAP', 'W_KAP'].includes(material) && kapCondition !== 'Sem Borda')
+      addOns.push(kapCondition)
+    if (material === 'RUBBERKAP') addOns.push(`Esp. ${thickness}mm`)
     if (exactMeasure) addOns.push('Medida Exata')
     const addOnStr = addOns.length > 0 ? ` c/ ${addOns.join(', ')}` : ''
 
@@ -161,6 +172,28 @@ export default function ProductForm({ onAdd }: { onAdd: (item: QuoteItem) => voi
     toast({ title: 'Item adicionado ao orçamento.' })
   }
 
+  const handleAddCustomItem = () => {
+    if (!customItem.description || customItem.price <= 0)
+      return toast({ variant: 'destructive', title: 'Preencha os dados do serviço.' })
+    onAdd({
+      id: Math.random().toString(),
+      description: customItem.description,
+      material: 'SERVICO_AVULSO',
+      customization: '',
+      width: 0,
+      height: 0,
+      quantity: customItem.qty,
+      exactMeasure: false,
+      unit: 'UN',
+      costPrice: customItem.price,
+      marginPercent: 0,
+      salePrice: customItem.price * customItem.qty,
+      isMisc: true,
+    })
+    toast({ title: 'Serviço avulso adicionado.' })
+    setCustomItem({ description: '', price: 0, qty: 1 })
+  }
+
   const handleAddCatalogItem = () => {
     if (!newCatForm.category || !newCatForm.name || newCatForm.price <= 0)
       return toast({ variant: 'destructive', title: 'Preencha os campos.' })
@@ -179,7 +212,7 @@ export default function ProductForm({ onAdd }: { onAdd: (item: QuoteItem) => voi
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center border-b pb-2">
-        <h3 className="font-semibold text-lg">3. Adicionar Produto da Tabela</h3>
+        <h3 className="font-semibold text-lg">3. Adicionar Itens ao Orçamento</h3>
         <Dialog open={newCatOpen} onOpenChange={setNewCatOpen}>
           <DialogTrigger asChild>
             <Button variant="outline" size="sm">
@@ -233,106 +266,188 @@ export default function ProductForm({ onAdd }: { onAdd: (item: QuoteItem) => voi
         </Dialog>
       </div>
 
-      <div className="grid md:grid-cols-5 gap-4 items-end">
-        <div className="space-y-2 md:col-span-2">
-          <Label>Linha / Material</Label>
-          <Select value={material} onValueChange={setMaterial}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.keys(costs).map((cat) => (
-                <SelectItem key={cat} value={cat}>
-                  {cat.replace(/_/g, ' ')}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2 md:col-span-3">
-          <Label>Variação / Tipo</Label>
-          <Select value={customization} onValueChange={setCustomization}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {availableItems.map((k) => (
-                <SelectItem key={k} value={k}>
-                  {k} - R$ {costs[material][k].price}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      <Tabs defaultValue="catalog">
+        <TabsList className="mb-4">
+          <TabsTrigger value="catalog">Produto do Catálogo</TabsTrigger>
+          <TabsTrigger value="custom">Serviço Avulso</TabsTrigger>
+        </TabsList>
 
-        {['m2', 'ml'].includes(selectedItemConfig?.type || '') && (
-          <>
-            <div className="space-y-2">
-              <Label>Largura (cm)</Label>
-              <Input type="number" value={width} onChange={(e) => setWidth(+e.target.value)} />
+        <TabsContent value="catalog" className="space-y-4">
+          <div className="grid md:grid-cols-5 gap-4 items-end">
+            <div className="space-y-2 md:col-span-2">
+              <Label>Linha / Material</Label>
+              <Select value={material} onValueChange={setMaterial}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.keys(costs).map((cat) => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat.replace(/_/g, ' ')}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Altura/Comp (cm)</Label>
-              <Input type="number" value={height} onChange={(e) => setHeight(+e.target.value)} />
+            <div className="space-y-2 md:col-span-3">
+              <Label>Variação / Tipo</Label>
+              <Select value={customization} onValueChange={setCustomization}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableItems.map((k) => (
+                    <SelectItem key={k} value={k}>
+                      {k} - R$ {costs[material][k].price}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          </>
-        )}
 
-        <div className="space-y-2">
-          <Label>Qtd</Label>
-          <Input type="number" value={qty} onChange={(e) => setQty(+e.target.value)} />
-        </div>
+            {['m2', 'ml'].includes(selectedItemConfig?.type || '') && (
+              <>
+                <div className="space-y-2">
+                  <Label>Largura (cm)</Label>
+                  <Input type="number" value={width} onChange={(e) => setWidth(+e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>
+                    {selectedItemConfig?.type === 'ml' ? 'Comprimento (cm)' : 'Altura/Comp (cm)'}
+                  </Label>
+                  <Input
+                    type="number"
+                    value={height}
+                    onChange={(e) => setHeight(+e.target.value)}
+                  />
+                </div>
+              </>
+            )}
 
-        {material.startsWith('VINIL_') && (
-          <div className="space-y-2 md:col-span-2">
-            <Label>Tipo de Borda</Label>
-            <Select value={bordaType} onValueChange={setBordaType}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Nenhuma">Sem Borda</SelectItem>
-                <SelectItem value="Vulcanizada">Vulcanizada (+ R$ 20/m²)</SelectItem>
-                <SelectItem value="Flex Aplicada">Flex Aplicada (+ R$ 45/m²)</SelectItem>
-                <SelectItem value="Rebaixada">Rebaixada (+ R$ 10/m²)</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="space-y-2">
+              <Label>Qtd</Label>
+              <Input type="number" value={qty} onChange={(e) => setQty(+e.target.value)} />
+            </div>
+
+            {material.startsWith('VINIL_') && (
+              <div className="space-y-2 md:col-span-2">
+                <Label>Tipo de Borda</Label>
+                <Select value={bordaType} onValueChange={setBordaType}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Nenhuma">Sem Borda</SelectItem>
+                    <SelectItem value="Vulcanizada">Vulcanizada (+ R$ 20/m²)</SelectItem>
+                    <SelectItem value="Flex Aplicada">Flex Aplicada (+ R$ 45/m²)</SelectItem>
+                    <SelectItem value="Rebaixada">Rebaixada (+ R$ 10/m²)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {['S_KAP', 'H_KAP', 'W_KAP'].includes(material) && (
+              <div className="space-y-2 md:col-span-2">
+                <Label>Condição</Label>
+                <Select value={kapCondition} onValueChange={setKapCondition}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Sem Borda">Sem Borda</SelectItem>
+                    <SelectItem value="Com Borda">Com Borda</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {material === 'RUBBERKAP' && (
+              <div className="space-y-2 md:col-span-2">
+                <Label>Espessura (mm)</Label>
+                <Select value={thickness} onValueChange={setThickness}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5 mm</SelectItem>
+                    <SelectItem value="8">8 mm</SelectItem>
+                    <SelectItem value="10">10 mm</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="flex items-center space-x-2 md:col-span-2 pb-2">
+              <Switch id="exact" checked={exactMeasure} onCheckedChange={setExactMeasure} />
+              <Label htmlFor="exact">Medida Exata (+10%)</Label>
+            </div>
           </div>
-        )}
 
-        <div className="flex items-center space-x-2 md:col-span-2 pb-2">
-          <Switch id="exact" checked={exactMeasure} onCheckedChange={setExactMeasure} />
-          <Label htmlFor="exact">Medida Exata (+10%)</Label>
-        </div>
-      </div>
+          <div className="mt-4 p-4 bg-muted rounded-lg grid md:grid-cols-4 gap-4 items-center border">
+            <div>
+              <p className="text-xs text-muted-foreground uppercase font-bold">Custo Base</p>
+              <p className="text-xl font-bold">{formatCurrency(calculatedValues.currentCost)}</p>
+              {calculatedValues.effectiveDims && (
+                <p className="text-[10px] text-primary font-medium">
+                  {calculatedValues.effectiveDims}
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label>Margem Lucro (%)</Label>
+              <Input
+                type="number"
+                value={margin}
+                onChange={(e) => setMargin(+e.target.value)}
+                className="bg-background"
+              />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground uppercase font-bold">Preço Venda</p>
+              <p className="text-xl font-bold text-primary">
+                {formatCurrency(calculatedValues.salePrice)}
+              </p>
+            </div>
+            <Button onClick={handleAddItem} className="w-full h-full" size="lg">
+              <PlusCircle className="w-4 h-4 mr-2" /> Adicionar Produto
+            </Button>
+          </div>
+        </TabsContent>
 
-      <div className="mt-4 p-4 bg-muted rounded-lg grid md:grid-cols-4 gap-4 items-center border">
-        <div>
-          <p className="text-xs text-muted-foreground uppercase font-bold">Custo Base</p>
-          <p className="text-xl font-bold">{formatCurrency(calculatedValues.currentCost)}</p>
-          {calculatedValues.effectiveDims && (
-            <p className="text-[10px] text-primary font-medium">{calculatedValues.effectiveDims}</p>
-          )}
-        </div>
-        <div className="space-y-2">
-          <Label>Margem Lucro (%)</Label>
-          <Input
-            type="number"
-            value={margin}
-            onChange={(e) => setMargin(+e.target.value)}
-            className="bg-background"
-          />
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground uppercase font-bold">Preço Venda</p>
-          <p className="text-xl font-bold text-primary">
-            {formatCurrency(calculatedValues.salePrice)}
-          </p>
-        </div>
-        <Button onClick={handleAddItem} className="w-full h-full" size="lg">
-          <PlusCircle className="w-4 h-4 mr-2" /> Adicionar
-        </Button>
-      </div>
+        <TabsContent value="custom" className="space-y-4 pt-2 border p-4 rounded-lg bg-muted/30">
+          <div className="grid md:grid-cols-4 gap-4 items-end">
+            <div className="space-y-2 md:col-span-2">
+              <Label>Descrição do Serviço ou Produto Avulso</Label>
+              <Input
+                value={customItem.description}
+                onChange={(e) => setCustomItem({ ...customItem, description: e.target.value })}
+                placeholder="Ex: Instalação no local, Ajuste de corte..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Preço Unitário (R$)</Label>
+              <Input
+                type="number"
+                value={customItem.price || ''}
+                onChange={(e) => setCustomItem({ ...customItem, price: +e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Qtd</Label>
+              <Input
+                type="number"
+                value={customItem.qty}
+                onChange={(e) => setCustomItem({ ...customItem, qty: +e.target.value })}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button onClick={handleAddCustomItem} variant="secondary" className="w-full md:w-auto">
+              <PlusCircle className="w-4 h-4 mr-2" /> Adicionar Item Avulso
+            </Button>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
