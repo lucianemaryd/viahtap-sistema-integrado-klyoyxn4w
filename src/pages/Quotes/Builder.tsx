@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -14,32 +14,50 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import { formatCurrency } from '@/lib/formatters'
 import useAppStore, { Quote, QuoteItem } from '@/stores/useAppStore'
+import { ProductPricingType } from '@/lib/constants'
 import { useToast } from '@/hooks/use-toast'
-import { ArrowLeft, Save, Printer, ImagePlus, FileUp, PlusCircle, Trash2 } from 'lucide-react'
+import { ArrowLeft, Save, Printer, ImagePlus, FileUp, PlusCircle, Trash2, Plus } from 'lucide-react'
 import QuotePreview from './QuotePreview'
 
 export default function QuoteBuilder() {
   const navigate = useNavigate()
-  const { addQuote, quotes, clients, settings, costs } = useAppStore()
+  const location = useLocation()
+  const { saveQuote, quotes, clients, settings, costs, updateCost } = useAppStore()
   const { toast } = useToast()
+
+  const editingQuoteId = location.state?.quoteId
+  const initialViewPdf = location.state?.viewPdf
+  const existingQuote = editingQuoteId ? quotes.find((q) => q.id === editingQuoteId) : null
 
   const defaultNumber = quotes.length > 0 ? Math.max(...quotes.map((q) => q.number)) + 1 : 467
 
-  const [clientId, setClientId] = useState<string>('')
-  const [seller, setSeller] = useState(settings.defaultSeller)
+  const [quoteId] = useState(existingQuote?.id || Math.random().toString())
+  const [quoteNumber] = useState(existingQuote?.number || defaultNumber)
+  const [status] = useState(existingQuote?.status || 'Rascunho')
+
+  const [clientId, setClientId] = useState<string>(existingQuote?.clientId || '')
+  const [seller, setSeller] = useState(existingQuote?.seller || settings.defaultSeller)
   const [observations, setObservations] = useState(
-    'Obs.: A produção do layout será realizada após a aprovação do orçamento.',
+    existingQuote?.observations ||
+      'Obs.: A produção do layout será realizada após a aprovação do orçamento.',
   )
-  const [photos, setPhotos] = useState<string[]>([])
-  const [layouts, setLayouts] = useState<string[]>([])
+  const [photos, setPhotos] = useState<string[]>(existingQuote?.photos || [])
+  const [layouts, setLayouts] = useState<string[]>(existingQuote?.layouts || [])
 
   const [conditions, setConditions] = useState({
-    delivery: '30 DIAS UTEIS',
-    validity: 5,
-    payment: '50% sinal no pedido\n50% na entrega',
-    freight: 150,
+    delivery: existingQuote?.deliveryTime || '30 DIAS UTEIS',
+    validity: existingQuote?.validityDays || 5,
+    payment: existingQuote?.paymentTerms || '50% sinal no pedido\n50% na entrega',
+    freight: existingQuote?.freight || 150,
   })
 
   // Product Form
@@ -49,7 +67,9 @@ export default function QuoteBuilder() {
 
   useEffect(() => {
     const items = Object.keys(costs[material] || {})
-    setCustomization(items[0] || '')
+    if (!items.includes(customization)) {
+      setCustomization(items[0] || '')
+    }
   }, [material, costs])
 
   const [width, setWidth] = useState(100)
@@ -60,13 +80,17 @@ export default function QuoteBuilder() {
   const [exactMeasure, setExactMeasure] = useState(false)
   const [margin, setMargin] = useState(100)
 
-  // Misc Services Form
-  const [miscDesc, setMiscDesc] = useState('')
-  const [miscCost, setMiscCost] = useState(0)
-  const [miscQty, setMiscQty] = useState(1)
-  const [miscMargin, setMiscMargin] = useState(100)
+  // Quick Add Catalog Item Form
+  const [newCatOpen, setNewCatOpen] = useState(false)
+  const [newCatForm, setNewCatForm] = useState({
+    category: '',
+    name: '',
+    type: 'm2' as ProductPricingType,
+    price: 0,
+    ncm: '',
+  })
 
-  const [items, setItems] = useState<QuoteItem[]>([])
+  const [items, setItems] = useState<QuoteItem[]>(existingQuote?.items || [])
 
   const selectedItemConfig = costs[material]?.[customization]
 
@@ -77,7 +101,11 @@ export default function QuoteBuilder() {
     let effectiveW = width
     let effectiveH = height
 
-    if (selectedItemConfig.fatorCorte && !exactMeasure && selectedItemConfig.type === 'm2') {
+    if (
+      selectedItemConfig.fatorCorte &&
+      !exactMeasure &&
+      (selectedItemConfig.type === 'm2' || selectedItemConfig.type === 'ml')
+    ) {
       const sortedFatores = [...selectedItemConfig.fatorCorte].sort((a, b) => a - b)
       const fitW = sortedFatores.find((f) => f >= width)
       const fitH = sortedFatores.find((f) => f >= height)
@@ -119,7 +147,7 @@ export default function QuoteBuilder() {
       salePrice: finalCost * (1 + margin / 100),
       effectiveDims:
         effectiveW !== width || effectiveH !== height
-          ? `(Fator: ${effectiveW}x${effectiveH}cm)`
+          ? `(Fator de Corte aplicado: ${effectiveW}x${effectiveH}cm)`
           : '',
     }
   }, [selectedItemConfig, width, height, qty, bordaFlex, bordaRebaixada, exactMeasure, margin])
@@ -127,9 +155,7 @@ export default function QuoteBuilder() {
   const handleAddItem = () => {
     if (!selectedItemConfig) return
     const isDimensioned = ['m2', 'ml'].includes(selectedItemConfig.type)
-    const dimensions = isDimensioned
-      ? ` ${width}x${height}cm ${calculatedValues.effectiveDims}`
-      : ''
+    const dimensions = isDimensioned ? ` ${width}x${height}cm` : ''
     let addOns = []
     if (bordaFlex) addOns.push('Borda Flex')
     if (bordaRebaixada) addOns.push('Borda Rebaixada')
@@ -143,7 +169,7 @@ export default function QuoteBuilder() {
 
     const newItem: QuoteItem = {
       id: Math.random().toString(),
-      description: `Tapete ${material.replace('_', ' ')} ${customization}${dimensions}${addOnStr}`,
+      description: `Tapete ${material.replace(/_/g, ' ')} ${customization}${dimensions}${addOnStr}`,
       material,
       customization,
       width,
@@ -156,49 +182,26 @@ export default function QuoteBuilder() {
       costPrice: calculatedValues.currentCost,
       marginPercent: margin,
       salePrice: calculatedValues.salePrice,
+      ncm: selectedItemConfig.ncm,
     }
     setItems([...items, newItem])
     toast({ title: 'Item adicionado ao orçamento.' })
   }
 
-  const handleAddMisc = () => {
-    if (!miscDesc || miscCost <= 0) return toast({ title: 'Preencha os campos do serviço avulso.' })
-    const totalCost = miscCost * miscQty
-    const newItem: QuoteItem = {
-      id: Math.random().toString(),
-      description: miscDesc,
-      material: 'SERVICO_AVULSO',
-      customization: 'Geral',
-      width: 0,
-      height: 0,
-      quantity: miscQty,
-      bordaFlex: false,
-      exactMeasure: false,
-      isMisc: true,
-      unit: 'SV',
-      costPrice: totalCost,
-      marginPercent: miscMargin,
-      salePrice: totalCost * (1 + miscMargin / 100),
+  const handleAddCatalogItem = () => {
+    if (!newCatForm.category || !newCatForm.name || newCatForm.price <= 0) {
+      return toast({ variant: 'destructive', title: 'Preencha categoria, nome e preço.' })
     }
-    setItems([...items, newItem])
-    setMiscDesc('')
-    setMiscCost(0)
-    setMiscQty(1)
-    toast({ title: 'Serviço avulso adicionado.' })
-  }
-
-  const handleRemoveItem = (id: string) => {
-    setItems(items.filter((i) => i.id !== id))
-  }
-
-  const handleAddAttachment = (type: 'photo' | 'layout') => {
-    const url =
-      type === 'photo'
-        ? 'https://img.usecurling.com/p/400/300?q=door%20mat'
-        : 'https://img.usecurling.com/p/400/300?q=blueprint%20design'
-    if (type === 'photo') setPhotos([...photos, url])
-    else setLayouts([...layouts, url])
-    toast({ title: 'Anexo adicionado (Simulado)' })
+    const catFormatted = newCatForm.category.toUpperCase().replace(/\s/g, '_')
+    updateCost(catFormatted, newCatForm.name, {
+      type: newCatForm.type,
+      price: newCatForm.price,
+      ncm: newCatForm.ncm,
+    })
+    setMaterial(catFormatted)
+    setTimeout(() => setCustomization(newCatForm.name), 100)
+    setNewCatOpen(false)
+    toast({ title: 'Novo produto salvo no catálogo!' })
   }
 
   const handleSave = () => {
@@ -209,16 +212,16 @@ export default function QuoteBuilder() {
         description: 'Selecione um cliente e adicione itens.',
       })
     }
-    const newQuote: Quote = {
-      id: Math.random().toString(),
-      number: defaultNumber,
-      date: new Date().toISOString(),
+    const quoteToSave: Quote = {
+      id: quoteId,
+      number: quoteNumber,
+      date: existingQuote?.date || new Date().toISOString(),
       clientId,
       seller,
       observations,
       photos,
       layouts,
-      status: 'Rascunho',
+      status: status,
       items,
       deliveryTime: conditions.delivery,
       validityDays: conditions.validity,
@@ -226,21 +229,21 @@ export default function QuoteBuilder() {
       freight: conditions.freight,
       total: items.reduce((acc, i) => acc + i.salePrice, 0) + conditions.freight,
     }
-    addQuote(newQuote)
+    saveQuote(quoteToSave)
     toast({ title: 'Orçamento salvo com sucesso!' })
     navigate('/quotes')
   }
 
   const draftQuote: Quote = {
-    id: 'draft',
-    number: defaultNumber,
-    date: new Date().toISOString(),
+    id: quoteId,
+    number: quoteNumber,
+    date: existingQuote?.date || new Date().toISOString(),
     clientId,
     seller,
     observations,
     photos,
     layouts,
-    status: 'Rascunho',
+    status: status,
     items,
     deliveryTime: conditions.delivery,
     validityDays: conditions.validity,
@@ -258,7 +261,9 @@ export default function QuoteBuilder() {
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-2xl font-bold">Novo Orçamento #{defaultNumber}</h1>
+          <h1 className="text-2xl font-bold">
+            {existingQuote ? `Editar Orçamento #${quoteNumber}` : `Novo Orçamento #${quoteNumber}`}
+          </h1>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => window.print()}>
@@ -270,10 +275,10 @@ export default function QuoteBuilder() {
         </div>
       </div>
 
-      <Tabs defaultValue="editor" className="w-full">
+      <Tabs defaultValue={initialViewPdf ? 'preview' : 'editor'} className="w-full">
         <TabsList className="no-print mb-4">
           <TabsTrigger value="editor">Editor</TabsTrigger>
-          <TabsTrigger value="preview">Pré-visualização</TabsTrigger>
+          <TabsTrigger value="preview">Pré-visualização & PDF</TabsTrigger>
         </TabsList>
 
         <TabsContent value="editor" className="space-y-6 no-print">
@@ -301,7 +306,7 @@ export default function QuoteBuilder() {
                   <Input value={seller} onChange={(e) => setSeller(e.target.value)} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Observações</Label>
+                  <Label>Observações e Pagamento</Label>
                   <Textarea
                     value={observations}
                     onChange={(e) => setObservations(e.target.value)}
@@ -311,24 +316,26 @@ export default function QuoteBuilder() {
                 <div className="flex gap-4 pt-2 border-t">
                   <Button
                     variant="secondary"
-                    onClick={() => handleAddAttachment('photo')}
+                    onClick={() =>
+                      setPhotos([...photos, 'https://img.usecurling.com/p/400/300?q=door%20mat'])
+                    }
                     className="w-full text-xs"
                   >
-                    <ImagePlus className="w-4 h-4 mr-2" /> Anexar Foto Local
+                    <ImagePlus className="w-4 h-4 mr-2" /> Anexar Foto
                   </Button>
                   <Button
                     variant="secondary"
-                    onClick={() => handleAddAttachment('layout')}
+                    onClick={() =>
+                      setLayouts([
+                        ...layouts,
+                        'https://img.usecurling.com/p/400/300?q=blueprint%20design',
+                      ])
+                    }
                     className="w-full text-xs"
                   >
                     <FileUp className="w-4 h-4 mr-2" /> Anexar Layout
                   </Button>
                 </div>
-                {(photos.length > 0 || layouts.length > 0) && (
-                  <div className="text-xs text-muted-foreground">
-                    {photos.length} fotos, {layouts.length} layouts anexados.
-                  </div>
-                )}
               </CardContent>
             </Card>
 
@@ -353,7 +360,7 @@ export default function QuoteBuilder() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Frete (R$)</Label>
+                  <Label>Frete Estimado (R$)</Label>
                   <Input
                     type="number"
                     value={conditions.freight}
@@ -374,7 +381,84 @@ export default function QuoteBuilder() {
 
           <Card>
             <CardContent className="pt-6">
-              <h3 className="font-semibold text-lg mb-4 border-b pb-2">3. Adicionar Produto</h3>
+              <div className="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 className="font-semibold text-lg">3. Adicionar Produto da Tabela</h3>
+                <Dialog open={newCatOpen} onOpenChange={setNewCatOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm">
+                      <Plus className="w-4 h-4 mr-1" /> Adicionar Produto Rápido
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Cadastrar Novo Produto na Tabela</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 pt-4">
+                      <div className="space-y-2">
+                        <Label>Categoria (Ex: VINIL_ALTO_TRAFEGO ou SERVICO_AVULSO)</Label>
+                        <Input
+                          value={newCatForm.category}
+                          onChange={(e) =>
+                            setNewCatForm({ ...newCatForm, category: e.target.value })
+                          }
+                          placeholder="Piso Modular..."
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Nome / Variação</Label>
+                        <Input
+                          value={newCatForm.name}
+                          onChange={(e) => setNewCatForm({ ...newCatForm, name: e.target.value })}
+                          placeholder="Instalação Especial..."
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Preço Base (R$)</Label>
+                          <Input
+                            type="number"
+                            value={newCatForm.price || ''}
+                            onChange={(e) =>
+                              setNewCatForm({ ...newCatForm, price: +e.target.value })
+                            }
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Tipo de Cálculo</Label>
+                          <Select
+                            value={newCatForm.type}
+                            onValueChange={(v: ProductPricingType) =>
+                              setNewCatForm({ ...newCatForm, type: v })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="fixed">Fixo / Unidade</SelectItem>
+                              <SelectItem value="m2">Metro Quadrado (M²)</SelectItem>
+                              <SelectItem value="ml">Metro Linear (ML)</SelectItem>
+                              <SelectItem value="roll">Rolo</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>NCM (Opcional)</Label>
+                        <Input
+                          value={newCatForm.ncm}
+                          onChange={(e) => setNewCatForm({ ...newCatForm, ncm: e.target.value })}
+                          placeholder="0000.00.00"
+                        />
+                      </div>
+                      <Button onClick={handleAddCatalogItem} className="w-full">
+                        Salvar no Catálogo
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+
               <div className="grid md:grid-cols-5 gap-4 items-end">
                 <div className="space-y-2 md:col-span-2">
                   <Label>Linha / Material</Label>
@@ -385,7 +469,7 @@ export default function QuoteBuilder() {
                     <SelectContent>
                       {Object.keys(costs).map((cat) => (
                         <SelectItem key={cat} value={cat}>
-                          {cat.replace('_', ' ')}
+                          {cat.replace(/_/g, ' ')}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -462,7 +546,7 @@ export default function QuoteBuilder() {
                     {formatCurrency(calculatedValues.currentCost)}
                   </p>
                   {calculatedValues.effectiveDims && (
-                    <p className="text-[10px] text-muted-foreground mt-1">
+                    <p className="text-[10px] text-primary font-medium mt-1">
                       {calculatedValues.effectiveDims}
                     </p>
                   )}
@@ -491,87 +575,46 @@ export default function QuoteBuilder() {
             </CardContent>
           </Card>
 
-          <div className="grid md:grid-cols-3 gap-6">
-            <Card className="md:col-span-1 border-dashed">
-              <CardContent className="pt-6 space-y-4">
-                <h3 className="font-semibold text-sm border-b pb-2">Serviço Avulso</h3>
-                <div className="space-y-2">
-                  <Label>Descrição do Serviço</Label>
-                  <Input value={miscDesc} onChange={(e) => setMiscDesc(e.target.value)} />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Custo Un. (R$)</Label>
-                    <Input
-                      type="number"
-                      value={miscCost}
-                      onChange={(e) => setMiscCost(+e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Quantidade</Label>
-                    <Input
-                      type="number"
-                      value={miscQty}
-                      onChange={(e) => setMiscQty(+e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Margem (%)</Label>
-                  <Input
-                    type="number"
-                    value={miscMargin}
-                    onChange={(e) => setMiscMargin(+e.target.value)}
-                  />
-                </div>
-                <Button variant="secondary" onClick={handleAddMisc} className="w-full">
-                  Adicionar Serviço
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="md:col-span-2">
-              <CardContent className="pt-6">
-                <h3 className="font-semibold text-lg mb-4 border-b pb-2">Itens Adicionados</h3>
-                {items.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-8 text-center border rounded border-dashed">
-                    Nenhum item adicionado ao orçamento.
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {items.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center justify-between bg-muted/50 p-3 rounded border text-sm"
-                      >
-                        <div className="flex-1">
-                          <p className="font-medium">{item.description}</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Qtd: {item.quantity} {item.unit} | Custo:{' '}
-                            {formatCurrency(item.costPrice)} | Margem: {item.marginPercent}%
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <span className="font-bold text-primary">
-                            {formatCurrency(item.salePrice)}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleRemoveItem(item.id)}
-                            className="text-destructive h-8 w-8"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
+          <Card className="md:col-span-2">
+            <CardContent className="pt-6">
+              <h3 className="font-semibold text-lg mb-4 border-b pb-2">Itens do Orçamento</h3>
+              {items.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-8 text-center border rounded border-dashed">
+                  Nenhum item adicionado ao orçamento.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {items.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between bg-muted/50 p-3 rounded border text-sm"
+                    >
+                      <div className="flex-1">
+                        <p className="font-medium">{item.description}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Qtd: {item.quantity} {item.unit} | Custo: {formatCurrency(item.costPrice)}{' '}
+                          | Margem: {item.marginPercent}% | NCM: {item.ncm || 'N/A'}
+                        </p>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                      <div className="flex items-center gap-4">
+                        <span className="font-bold text-primary">
+                          {formatCurrency(item.salePrice)}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setItems(items.filter((i) => i.id !== item.id))}
+                          className="text-destructive h-8 w-8"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="preview" className="print:m-0 print:p-0">

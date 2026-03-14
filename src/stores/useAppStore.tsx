@@ -6,9 +6,31 @@ export type Client = {
   name: string
   doc: string
   ie: string
+  im?: string
   contactName: string
   phone: string
+  email?: string
   address: string
+  cep?: string
+  bairro?: string
+}
+
+export type Supplier = {
+  id: string
+  name: string
+  cnpj: string
+  contactName: string
+  phone: string
+  email?: string
+}
+
+export type FinTransaction = {
+  id: string
+  desc: string
+  value: number
+  date: string
+  status: 'Pendente' | 'Pago' | 'Recebido'
+  type: 'INCOME' | 'EXPENSE'
 }
 
 export type CompanySettings = {
@@ -36,6 +58,7 @@ export type QuoteItem = {
   costPrice: number
   marginPercent: number
   salePrice: number
+  ncm?: string
 }
 
 export type Quote = {
@@ -60,12 +83,15 @@ type AppState = {
   settings: CompanySettings
   updateSettings: (s: Partial<CompanySettings>) => void
   clients: Client[]
-  addClient: (c: Client) => void
-  updateClient: (c: Client) => void
+  saveClient: (c: Client) => void
+  suppliers: Supplier[]
+  saveSupplier: (s: Supplier) => void
+  transactions: FinTransaction[]
+  addTransaction: (t: FinTransaction) => void
   costs: Record<string, Record<string, ProductPricing>>
-  updateCost: (category: string, item: string, price: number) => void
+  updateCost: (category: string, item: string, data: Partial<ProductPricing>) => void
   quotes: Quote[]
-  addQuote: (quote: Quote) => void
+  saveQuote: (quote: Quote) => void
   updateQuoteStatus: (id: string, status: Quote['status']) => void
 }
 
@@ -87,9 +113,43 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       name: 'Condominio Vide Campo Belo',
       doc: 'ISENTO',
       ie: 'ISENTO',
+      im: '',
       contactName: 'João Silva',
       phone: '(19) 99999-1111',
-      address: 'Rua Estevão Baião, 520, Vila Congonhas, SP',
+      email: 'contato@videcampobelo.com.br',
+      address: 'Rua Estevão Baião, 520',
+      bairro: 'Vila Congonhas',
+      cep: '04624-001',
+    },
+  ])
+
+  const [suppliers, setSuppliers] = useState<Supplier[]>([
+    {
+      id: 's1',
+      name: 'Fornecedor Kapazi Oficial',
+      cnpj: '12.345.678/0001-99',
+      contactName: 'Carlos Distribuição',
+      phone: '(11) 3333-4444',
+      email: 'vendas@kapazi.com.br',
+    },
+  ])
+
+  const [transactions, setTransactions] = useState<FinTransaction[]>([
+    {
+      id: 't1',
+      desc: 'Compra Vinil Lote 44',
+      value: 1250.0,
+      date: new Date().toISOString(),
+      status: 'Pendente',
+      type: 'EXPENSE',
+    },
+    {
+      id: 't2',
+      desc: 'Energia Elétrica',
+      value: 450.0,
+      date: new Date().toISOString(),
+      status: 'Pago',
+      type: 'EXPENSE',
     },
   ])
 
@@ -127,18 +187,54 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
           costPrice: 125,
           marginPercent: 100,
           salePrice: 5490,
+          ncm: '3918.10.00',
         },
       ],
     },
   ])
 
   const updateSettings = (s: Partial<CompanySettings>) => setSettings((p) => ({ ...p, ...s }))
-  const addClient = (c: Client) => setClients((p) => [c, ...p])
-  const updateClient = (c: Client) => setClients((p) => p.map((x) => (x.id === c.id ? c : x)))
-  const updateCost = (c: string, i: string, p: number) => {
-    setCosts((prev) => ({ ...prev, [c]: { ...prev[c], [i]: { ...prev[c][i], price: p } } }))
+
+  const saveClient = (c: Client) => {
+    setClients((p) => {
+      const exists = p.find((x) => x.id === c.id)
+      if (exists) return p.map((x) => (x.id === c.id ? c : x))
+      return [c, ...p]
+    })
   }
-  const addQuote = (q: Quote) => setQuotes((p) => [q, ...p])
+
+  const saveSupplier = (s: Supplier) => {
+    setSuppliers((p) => {
+      const exists = p.find((x) => x.id === s.id)
+      if (exists) return p.map((x) => (x.id === s.id ? s : x))
+      return [s, ...p]
+    })
+  }
+
+  const addTransaction = (t: FinTransaction) => setTransactions((p) => [t, ...p])
+
+  const updateCost = (c: string, i: string, data: Partial<ProductPricing>) => {
+    setCosts((prev) => {
+      const category = prev[c] || {}
+      const item = category[i] || { type: 'fixed', price: 0 }
+      return {
+        ...prev,
+        [c]: {
+          ...category,
+          [i]: { ...item, ...data },
+        },
+      }
+    })
+  }
+
+  const saveQuote = (q: Quote) => {
+    setQuotes((p) => {
+      const exists = p.find((x) => x.id === q.id)
+      if (exists) return p.map((x) => (x.id === q.id ? q : x))
+      return [q, ...p]
+    })
+  }
+
   const updateQuoteStatus = (id: string, s: Quote['status']) =>
     setQuotes((p) => p.map((q) => (q.id === id ? { ...q, status: s } : q)))
 
@@ -149,12 +245,15 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
         settings,
         updateSettings,
         clients,
-        addClient,
-        updateClient,
+        saveClient,
+        suppliers,
+        saveSupplier,
+        transactions,
+        addTransaction,
         costs,
         updateCost,
         quotes,
-        addQuote,
+        saveQuote,
         updateQuoteStatus,
       },
     },

@@ -8,6 +8,7 @@ import QuoteBuilder from './pages/Quotes/Builder'
 import Sales from './pages/Sales'
 import Financial from './pages/Financial'
 import CRM from './pages/CRM'
+import Suppliers from './pages/Suppliers'
 import Invoices from './pages/Invoices'
 import Settings from './pages/Settings'
 import NotFound from './pages/NotFound'
@@ -21,6 +22,7 @@ export default function App() {
           <Route path="/" element={<Layout />}>
             <Route index element={<Dashboard />} />
             <Route path="crm" element={<CRM />} />
+            <Route path="suppliers" element={<Suppliers />} />
             <Route path="quotes" element={<QuotesList />} />
             <Route path="quotes/new" element={<QuoteBuilder />} />
             <Route path="sales" element={<Sales />} />

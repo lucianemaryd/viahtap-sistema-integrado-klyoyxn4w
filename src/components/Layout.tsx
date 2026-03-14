@@ -20,6 +20,7 @@ import {
   Settings,
   Search,
   Bell,
+  Truck,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -29,6 +30,7 @@ import useAppStore from '@/stores/useAppStore'
 const menuItems = [
   { title: 'Dashboard', icon: LayoutDashboard, path: '/' },
   { title: 'CRM', icon: Users, path: '/crm' },
+  { title: 'Fornecedores', icon: Truck, path: '/suppliers' },
   { title: 'Orçamentos', icon: FileText, path: '/quotes' },
   { title: 'Vendas', icon: ShoppingCart, path: '/sales' },
   { title: 'Tabela de Custos', icon: Calculator, path: '/costs' },

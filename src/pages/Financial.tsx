@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
@@ -8,43 +9,120 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import useAppStore from '@/stores/useAppStore'
 import { formatCurrency, formatDate } from '@/lib/formatters'
 import { Badge } from '@/components/ui/badge'
-import { ArrowDownRight, ArrowUpRight, DollarSign } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, DollarSign, Plus } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
 
 export default function Financial() {
-  const { quotes, clients } = useAppStore()
+  const { quotes, clients, transactions, addTransaction } = useAppStore()
+  const { toast } = useToast()
+  const [open, setOpen] = useState(false)
+  const [form, setForm] = useState({ desc: '', value: 0, type: 'EXPENSE' as 'INCOME' | 'EXPENSE' })
 
   const approvedQuotes = quotes.filter((q) => q.status === 'Aprovado')
-  const totalReceivables = approvedQuotes.reduce((acc, q) => acc + q.total, 0)
+  const quotesReceivables = approvedQuotes.reduce((acc, q) => acc + q.total, 0)
 
-  // Mock payables for cash flow demonstration
-  const payables = [
-    {
-      id: '1',
-      desc: 'Fornecedor Kapazi (Vinil)',
-      value: 1250.0,
+  const manualReceivables = transactions
+    .filter((t) => t.type === 'INCOME')
+    .reduce((acc, t) => acc + t.value, 0)
+  const totalReceivables = quotesReceivables + manualReceivables
+
+  const payablesList = transactions.filter((t) => t.type === 'EXPENSE')
+  const totalPayables = payablesList.reduce((acc, p) => acc + p.value, 0)
+
+  const handleAddManual = () => {
+    if (!form.desc || form.value <= 0)
+      return toast({ variant: 'destructive', title: 'Preencha descrição e valor.' })
+    addTransaction({
+      id: Math.random().toString(),
+      desc: form.desc,
+      value: form.value,
+      type: form.type,
       date: new Date().toISOString(),
       status: 'Pendente',
-    },
-    {
-      id: '2',
-      desc: 'Energia Elétrica',
-      value: 450.0,
-      date: new Date().toISOString(),
-      status: 'Pago',
-    },
-  ]
-  const totalPayables = payables.reduce((acc, p) => acc + p.value, 0)
+    })
+    setOpen(false)
+    setForm({ desc: '', value: 0, type: 'EXPENSE' })
+    toast({ title: 'Lançamento registrado com sucesso.' })
+  }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Financeiro & Fluxo</h1>
-        <p className="text-muted-foreground">
-          Visão consolidada das contas a receber (vendas) e pagar.
-        </p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Financeiro & Fluxo</h1>
+          <p className="text-muted-foreground">
+            Visão consolidada de contas a pagar, receber e lançamentos avulsos.
+          </p>
+        </div>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="w-4 h-4 mr-2" /> Lançamento Manual
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Novo Lançamento Avulso</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 pt-4">
+              <div className="space-y-2">
+                <Label>Tipo de Lançamento</Label>
+                <Select
+                  value={form.type}
+                  onValueChange={(v: 'INCOME' | 'EXPENSE') => setForm({ ...form, type: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="EXPENSE">
+                      Despesa (Impostos, Fretes, Brindes, etc)
+                    </SelectItem>
+                    <SelectItem value="INCOME">Receita (Venda Avulsa, Reembolsos)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Descrição</Label>
+                <Input
+                  value={form.desc}
+                  onChange={(e) => setForm({ ...form, desc: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Valor (R$)</Label>
+                <Input
+                  type="number"
+                  value={form.value || ''}
+                  onChange={(e) => setForm({ ...form, value: +e.target.value })}
+                />
+              </div>
+              <Button onClick={handleAddManual} className="w-full">
+                Registrar
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -57,7 +135,7 @@ export default function Financial() {
             <div className="text-2xl font-bold text-green-600">
               {formatCurrency(totalReceivables)}
             </div>
-            <p className="text-xs text-muted-foreground">Originado de Vendas Aprovadas</p>
+            <p className="text-xs text-muted-foreground">Vendas Aprovadas + Avulsos</p>
           </CardContent>
         </Card>
         <Card>
@@ -67,7 +145,7 @@ export default function Financial() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">{formatCurrency(totalPayables)}</div>
-            <p className="text-xs text-muted-foreground">Fornecedores e Custos</p>
+            <p className="text-xs text-muted-foreground">Fornecedores e Custos Avulsos</p>
           </CardContent>
         </Card>
         <Card>
@@ -86,21 +164,21 @@ export default function Financial() {
 
       <Tabs defaultValue="receber">
         <TabsList>
-          <TabsTrigger value="receber">Contas a Receber (Vendas)</TabsTrigger>
+          <TabsTrigger value="receber">Contas a Receber</TabsTrigger>
           <TabsTrigger value="pagar">Contas a Pagar</TabsTrigger>
         </TabsList>
         <TabsContent value="receber" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Lançamentos Futuros</CardTitle>
+              <CardTitle>Lançamentos de Receita</CardTitle>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Origem</TableHead>
+                    <TableHead>Origem / Descrição</TableHead>
                     <TableHead>Cliente</TableHead>
-                    <TableHead>Data da Venda</TableHead>
+                    <TableHead>Data</TableHead>
                     <TableHead className="text-right">Valor</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -110,7 +188,7 @@ export default function Financial() {
                     return (
                       <TableRow key={q.id}>
                         <TableCell>
-                          <Badge>Orc #{q.number}</Badge>
+                          <Badge>Venda #{q.number}</Badge>
                         </TableCell>
                         <TableCell>{client?.name || 'Desconhecido'}</TableCell>
                         <TableCell>{formatDate(q.date)}</TableCell>
@@ -120,6 +198,20 @@ export default function Financial() {
                       </TableRow>
                     )
                   })}
+                  {transactions
+                    .filter((t) => t.type === 'INCOME')
+                    .map((t) => (
+                      <TableRow key={t.id}>
+                        <TableCell>
+                          <Badge variant="outline">Manual</Badge> {t.desc}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">-</TableCell>
+                        <TableCell>{formatDate(t.date)}</TableCell>
+                        <TableCell className="text-right font-medium text-green-600">
+                          {formatCurrency(t.value)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
                 </TableBody>
               </Table>
             </CardContent>
@@ -128,25 +220,25 @@ export default function Financial() {
         <TabsContent value="pagar" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Despesas</CardTitle>
+              <CardTitle>Despesas e Custos</CardTitle>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Descrição</TableHead>
-                    <TableHead>Vencimento</TableHead>
+                    <TableHead>Data Registro</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Valor</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {payables.map((p) => (
+                  {payablesList.map((p) => (
                     <TableRow key={p.id}>
-                      <TableCell>{p.desc}</TableCell>
+                      <TableCell className="font-medium">{p.desc}</TableCell>
                       <TableCell>{formatDate(p.date)}</TableCell>
                       <TableCell>
-                        <Badge variant={p.status === 'Pago' ? 'default' : 'destructive'}>
+                        <Badge variant={p.status === 'Pago' ? 'default' : 'secondary'}>
                           {p.status}
                         </Badge>
                       </TableCell>

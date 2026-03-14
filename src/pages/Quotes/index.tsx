@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Card, CardContent } from '@/components/ui/card'
 import {
   Table,
@@ -12,7 +12,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Plus, Search, FileText, CheckCircle } from 'lucide-react'
+import { Plus, Search, FileText, CheckCircle, Edit } from 'lucide-react'
 import useAppStore from '@/stores/useAppStore'
 import { formatCurrency, formatDate } from '@/lib/formatters'
 import { useToast } from '@/hooks/use-toast'
@@ -20,15 +20,18 @@ import { useToast } from '@/hooks/use-toast'
 export default function QuotesList() {
   const { quotes, clients, updateQuoteStatus } = useAppStore()
   const { toast } = useToast()
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
 
   const getClientName = (id: string) => clients.find((c) => c.id === id)?.name || 'Desconhecido'
 
-  const filteredQuotes = quotes.filter(
-    (q) =>
-      getClientName(q.clientId).toLowerCase().includes(search.toLowerCase()) ||
-      q.number.toString().includes(search),
-  )
+  const filteredQuotes = [...quotes]
+    .sort((a, b) => b.number - a.number)
+    .filter(
+      (q) =>
+        getClientName(q.clientId).toLowerCase().includes(search.toLowerCase()) ||
+        q.number.toString().includes(search),
+    )
 
   const handleApprove = (id: string) => {
     updateQuoteStatus(id, 'Aprovado')
@@ -40,7 +43,7 @@ export default function QuotesList() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Orçamentos</h1>
-          <p className="text-muted-foreground">Gerencie propostas e gere PDFs.</p>
+          <p className="text-muted-foreground">Gerencie propostas, edite e gere PDFs.</p>
         </div>
         <Button asChild>
           <Link to="/quotes/new">
@@ -113,8 +116,16 @@ export default function QuotesList() {
                           <CheckCircle className="h-4 w-4 text-green-600" />
                         </Button>
                       )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => navigate('/quotes/new', { state: { quoteId: quote.id } })}
+                        title="Editar"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
                       <Button variant="secondary" size="sm" asChild title="Ver PDF">
-                        <Link to={`/quotes/new`} state={{ quoteId: quote.id }}>
+                        <Link to={`/quotes/new`} state={{ quoteId: quote.id, viewPdf: true }}>
                           <FileText className="h-4 w-4" />
                         </Link>
                       </Button>
