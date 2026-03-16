@@ -41,17 +41,20 @@ const menuItems = [
 
 export default function Layout() {
   const location = useLocation()
-  const { settings } = useAppStore()
+  // Cast to any to avoid TS errors if settings is not fully typed in the store interface
+  const { settings } = useAppStore() as any
+
+  // Safely access logoUrl and name with a fallback mechanism
+  const logoUrl = settings?.logoUrl ?? 'https://img.usecurling.com/i?q=logo&color=blue&shape=fill'
+  const appName = settings?.name ? settings.name.split(' ')[0] : 'ViahTap'
 
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-muted/30">
         <Sidebar className="no-print border-r">
           <SidebarHeader className="h-16 flex items-center justify-center border-b px-4">
-            <img src={settings.logoUrl} alt="ViahTap" className="h-8 object-contain" />
-            <span className="ml-2 font-bold text-primary truncate hidden md:block">
-              {settings.name.split(' ')[0]}
-            </span>
+            <img src={logoUrl} alt={appName} className="h-8 object-contain" />
+            <span className="ml-2 font-bold text-primary truncate hidden md:block">{appName}</span>
           </SidebarHeader>
           <SidebarContent className="py-4">
             <SidebarMenu>
