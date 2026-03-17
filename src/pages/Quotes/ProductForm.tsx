@@ -47,6 +47,7 @@ export default function ProductForm({ onAdd }: ProductFormProps) {
     if (currentUnit === 'm2') {
       multiplier = width * length
     } else if (currentUnit === 'ml') {
+      // Linear meter exact rule: Total = (Length * Linear Meter Price)
       multiplier = length
     }
 
@@ -55,10 +56,13 @@ export default function ProductForm({ onAdd }: ProductFormProps) {
       selectedProduct.conditions?.filter((c) => selectedConditions.includes(c.id)) || []
 
     activeConditions.forEach((cond) => {
-      if (cond.modifierType === 'per_m2' && currentUnit === 'm2') {
-        modifierTotal += cond.priceModifier * (width * length)
-      } else if (cond.modifierType === 'per_ml' && currentUnit === 'ml') {
-        modifierTotal += cond.priceModifier * length
+      if (cond.modifierType === 'per_m2') {
+        modifierTotal += cond.priceModifier * (currentUnit === 'm2' ? width * length : 1)
+      } else if (cond.modifierType === 'per_ml') {
+        // If product is sold by area, a linear meter condition (like a border) applies to perimeter.
+        // Otherwise, it strictly applies to the length.
+        const mlMultiplier = currentUnit === 'm2' ? 2 * (width + length) : length
+        modifierTotal += cond.priceModifier * mlMultiplier
       } else if (cond.modifierType === 'fixed') {
         modifierTotal += cond.priceModifier
       }

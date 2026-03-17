@@ -67,10 +67,16 @@ export interface Quote {
   status: 'draft' | 'sent' | 'approved' | 'rejected'
 }
 
+export interface AppSettings {
+  logoUrl: string
+  name: string
+}
+
 interface AppState {
   customers: Customer[]
   products: Product[]
   quotes: Quote[]
+  settings: AppSettings
   addCustomer: (customer: Omit<Customer, 'id'>) => void
   updateCustomer: (id: string, customer: Partial<Customer>) => void
   deleteCustomer: (id: string) => void
@@ -80,6 +86,7 @@ interface AppState {
   addQuote: (quote: Omit<Quote, 'id'>) => void
   updateQuote: (id: string, quote: Partial<Quote>) => void
   deleteQuote: (id: string) => void
+  updateSettings: (settings: Partial<AppSettings>) => void
 }
 
 const initialProducts: Product[] = [
@@ -237,10 +244,16 @@ const initialProducts: Product[] = [
   },
 ]
 
+const initialSettings: AppSettings = {
+  logoUrl: 'https://img.usecurling.com/i?q=logo&color=blue&shape=fill',
+  name: 'ViahTap',
+}
+
 export const useAppStore = create<AppState>((set) => ({
   customers: [],
   products: initialProducts,
   quotes: [],
+  settings: initialSettings,
   addCustomer: (customer) =>
     set((state) => ({
       customers: [...state.customers, { ...customer, id: Math.random().toString(36).substr(2, 9) }],
@@ -276,6 +289,10 @@ export const useAppStore = create<AppState>((set) => ({
   deleteQuote: (id) =>
     set((state) => ({
       quotes: state.quotes.filter((q) => q.id !== id),
+    })),
+  updateSettings: (newSettings) =>
+    set((state) => ({
+      settings: { ...state.settings, ...newSettings },
     })),
 }))
 

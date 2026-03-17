@@ -65,11 +65,11 @@ export default function Costs() {
         </Button>
       </div>
 
-      <div className="rounded-md border bg-card">
+      <div className="rounded-md border bg-card overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Produto</TableHead>
+              <TableHead className="w-[300px]">Produto</TableHead>
               <TableHead>Categoria</TableHead>
               <TableHead>NCM</TableHead>
               <TableHead>IPI</TableHead>
@@ -82,7 +82,14 @@ export default function Costs() {
           <TableBody>
             {products.map((product) => (
               <TableRow key={product.id}>
-                <TableCell className="font-medium">{product.name}</TableCell>
+                <TableCell className="font-medium">
+                  <Input
+                    value={product.name}
+                    onChange={(e) => updateProduct(product.id, { name: e.target.value })}
+                    className="h-8 border-transparent hover:border-input focus:border-input focus:ring-1 bg-transparent px-2 w-full"
+                    title="Editar nome"
+                  />
+                </TableCell>
                 <TableCell>{product.category}</TableCell>
                 <TableCell>{product.ncm || '-'}</TableCell>
                 <TableCell>{product.ipi !== undefined ? `${product.ipi}%` : '-'}</TableCell>
@@ -97,10 +104,16 @@ export default function Costs() {
                       setEditingProduct(product)
                       setIsDialogOpen(true)
                     }}
+                    title="Editar Detalhes"
                   >
                     <Edit className="h-4 w-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" onClick={() => deleteProduct(product.id)}>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => deleteProduct(product.id)}
+                    title="Excluir Produto"
+                  >
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 </TableCell>
@@ -117,7 +130,7 @@ export default function Costs() {
           </DialogHeader>
           <form onSubmit={handleSave} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
+              <div className="space-y-2 col-span-2">
                 <Label htmlFor="name">Nome</Label>
                 <Input id="name" name="name" defaultValue={editingProduct?.name} required />
               </div>
@@ -159,7 +172,7 @@ export default function Costs() {
                   defaultValue={editingProduct?.ipi}
                 />
               </div>
-              <div className="space-y-2 col-span-2">
+              <div className="space-y-2">
                 <Label htmlFor="warranty">Garantia</Label>
                 <Input id="warranty" name="warranty" defaultValue={editingProduct?.warranty} />
               </div>

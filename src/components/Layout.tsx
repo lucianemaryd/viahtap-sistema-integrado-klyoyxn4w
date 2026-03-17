@@ -41,10 +41,9 @@ const menuItems = [
 
 export default function Layout() {
   const location = useLocation()
-  // Cast to any to avoid TS errors if settings is not fully typed in the store interface
-  const { settings } = useAppStore() as any
+  const { settings } = useAppStore()
 
-  // Safely access logoUrl and name with a fallback mechanism
+  // Safely access logoUrl and name with a robust fallback mechanism for runtime stability
   const logoUrl = settings?.logoUrl ?? 'https://img.usecurling.com/i?q=logo&color=blue&shape=fill'
   const appName = settings?.name ? settings.name.split(' ')[0] : 'ViahTap'
 
