@@ -33,21 +33,28 @@ import { ArrowDownRight, ArrowUpRight, DollarSign, Plus } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 
 export default function Financial() {
-  const { quotes, clients, transactions, addTransaction } = useAppStore()
+  const store = useAppStore() as any
+  const quotes = store?.quotes || []
+  const clients = store?.clients || store?.customers || []
+  const transactions = store?.transactions || []
+  const addTransaction = store?.addTransaction || (() => {})
+
   const { toast } = useToast()
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState({ desc: '', value: 0, type: 'EXPENSE' as 'INCOME' | 'EXPENSE' })
 
-  const approvedQuotes = quotes.filter((q) => q.status === 'Aprovado')
-  const quotesReceivables = approvedQuotes.reduce((acc, q) => acc + q.total, 0)
+  const approvedQuotes = quotes.filter(
+    (q: any) => q.status === 'Aprovado' || q.status === 'approved',
+  )
+  const quotesReceivables = approvedQuotes.reduce((acc: number, q: any) => acc + (q.total || 0), 0)
 
-  const manualReceivables = transactions
-    .filter((t) => t.type === 'INCOME')
-    .reduce((acc, t) => acc + t.value, 0)
+  const manualReceivables = (transactions || [])
+    .filter((t: any) => t.type === 'INCOME')
+    .reduce((acc: number, t: any) => acc + (t.value || 0), 0)
   const totalReceivables = quotesReceivables + manualReceivables
 
-  const payablesList = transactions.filter((t) => t.type === 'EXPENSE')
-  const totalPayables = payablesList.reduce((acc, p) => acc + p.value, 0)
+  const payablesList = (transactions || []).filter((t: any) => t.type === 'EXPENSE')
+  const totalPayables = payablesList.reduce((acc: number, p: any) => acc + (p.value || 0), 0)
 
   const handleAddManual = () => {
     if (!form.desc || form.value <= 0)
@@ -67,7 +74,7 @@ export default function Financial() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Financeiro & Fluxo</h1>
           <p className="text-muted-foreground">
@@ -183,24 +190,24 @@ export default function Financial() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {approvedQuotes.map((q) => {
-                    const client = clients.find((c) => c.id === q.clientId)
+                  {approvedQuotes.map((q: any) => {
+                    const client = clients.find((c: any) => c.id === (q.clientId || q.customerId))
                     return (
                       <TableRow key={q.id}>
                         <TableCell>
-                          <Badge>Venda #{q.number}</Badge>
+                          <Badge>Venda #{q.number || q.id.substring(0, 6)}</Badge>
                         </TableCell>
                         <TableCell>{client?.name || 'Desconhecido'}</TableCell>
                         <TableCell>{formatDate(q.date)}</TableCell>
                         <TableCell className="text-right font-medium text-green-600">
-                          {formatCurrency(q.total)}
+                          {formatCurrency(q.total || 0)}
                         </TableCell>
                       </TableRow>
                     )
                   })}
-                  {transactions
-                    .filter((t) => t.type === 'INCOME')
-                    .map((t) => (
+                  {(transactions || [])
+                    .filter((t: any) => t.type === 'INCOME')
+                    .map((t: any) => (
                       <TableRow key={t.id}>
                         <TableCell>
                           <Badge variant="outline">Manual</Badge> {t.desc}
@@ -208,10 +215,18 @@ export default function Financial() {
                         <TableCell className="text-muted-foreground">-</TableCell>
                         <TableCell>{formatDate(t.date)}</TableCell>
                         <TableCell className="text-right font-medium text-green-600">
-                          {formatCurrency(t.value)}
+                          {formatCurrency(t.value || 0)}
                         </TableCell>
                       </TableRow>
                     ))}
+                  {approvedQuotes.length === 0 &&
+                    (transactions || []).filter((t: any) => t.type === 'INCOME').length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+                          Nenhuma conta a receber encontrada.
+                        </TableCell>
+                      </TableRow>
+                    )}
                 </TableBody>
               </Table>
             </CardContent>
@@ -233,7 +248,7 @@ export default function Financial() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {payablesList.map((p) => (
+                  {payablesList.map((p: any) => (
                     <TableRow key={p.id}>
                       <TableCell className="font-medium">{p.desc}</TableCell>
                       <TableCell>{formatDate(p.date)}</TableCell>
@@ -243,10 +258,17 @@ export default function Financial() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right font-medium text-red-600">
-                        {formatCurrency(p.value)}
+                        {formatCurrency(p.value || 0)}
                       </TableCell>
                     </TableRow>
                   ))}
+                  {payablesList.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-6 text-muted-foreground">
+                        Nenhuma conta a pagar encontrada.
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
